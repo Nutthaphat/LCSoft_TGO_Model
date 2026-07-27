@@ -1,0 +1,151 @@
+.streams-header {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.streams-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: #fff;
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-2);
+  overflow: auto;
+}
+
+.streams-list {
+  max-height: calc(100vh - 180px);
+}
+
+.preview-panel {
+  position: sticky;
+  top: var(--space-2);
+  max-height: calc(100vh - 180px);
+}
+
+.panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.panel__header h2,
+.preview-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.preview-panel h3 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 0.9rem;
+}
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+  padding: 0;
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.details > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.details dt {
+  color: var(--color-text-muted);
+}
+
+.details dd {
+  margin: 0;
+  font-weight: 550;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table th {
+  color: var(--color-text-muted);
+  font-weight: 550;
+}
+
+.table--compact th,
+.table--compact td {
+  padding: 8px 6px;
+  white-space: normal;
+}
+
+.stream-row {
+  cursor: pointer;
+}
+
+.stream-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.stream-row--selected {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+@media (max-width: 960px) {
+  .streams-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    position: static;
+    max-height: none;
+  }
+}

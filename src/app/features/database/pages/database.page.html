@@ -1,0 +1,259 @@
+<section class="page">
+  <header class="page__header db-header">
+    <div>
+      <h1 class="page__title">Emission Database</h1>
+      <p class="page__subtitle">
+        Manage emission sources and factors without changing source code.
+        {{ sourceCount() }} sources · {{ factorCount() }} factors
+        @if (updatedAt()) {
+          · Updated {{ updatedAt() | date: 'medium' }}
+        }
+      </p>
+    </div>
+    <div class="db-header__actions">
+      <label class="btn btn--ghost">
+        <span class="material-symbols-outlined">upload</span>
+        Merge JSON
+        <input type="file" accept=".json,application/json" hidden (change)="importDatabase($event, 'merge')" />
+      </label>
+      <label class="btn btn--ghost">
+        <span class="material-symbols-outlined">sync</span>
+        Replace JSON
+        <input
+          type="file"
+          accept=".json,application/json"
+          hidden
+          (change)="importDatabase($event, 'replace')"
+        />
+      </label>
+      <button type="button" class="btn btn--ghost" (click)="exportDatabase()">
+        <span class="material-symbols-outlined">download</span>
+        Export
+      </button>
+      <button type="button" class="btn btn--ghost" (click)="restoreDefaults()">
+        <span class="material-symbols-outlined">restart_alt</span>
+        Restore Defaults
+      </button>
+    </div>
+  </header>
+
+  @if (editorMode() === 'create-source' || editorMode() === 'edit-source') {
+    <article class="panel form-panel">
+      <h2>{{ editorMode() === 'edit-source' ? 'Edit Source' : 'Add Source' }}</h2>
+      <form class="form form--2" [formGroup]="sourceForm" (ngSubmit)="saveSource()">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" formControlName="name" />
+        </label>
+        <label class="field">
+          <span>Organization</span>
+          <input type="text" formControlName="organization" />
+        </label>
+        <label class="field">
+          <span>Country</span>
+          <input type="text" formControlName="country" />
+        </label>
+        <label class="field">
+          <span>Year</span>
+          <input type="number" formControlName="year" />
+        </label>
+        <label class="field">
+          <span>Version</span>
+          <input type="text" formControlName="version" />
+        </label>
+        <label class="field field--full">
+          <span>Reference</span>
+          <input type="text" formControlName="reference" />
+        </label>
+        <div class="form__actions field--full">
+          <button type="button" class="btn btn--ghost" (click)="closeEditor()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Source</button>
+        </div>
+      </form>
+    </article>
+  }
+
+  @if (editorMode() === 'create-factor' || editorMode() === 'edit-factor') {
+    <article class="panel form-panel">
+      <h2>{{ editorMode() === 'edit-factor' ? 'Edit Factor' : 'Add Factor' }}</h2>
+      <form class="form form--2" [formGroup]="factorForm" (ngSubmit)="saveFactor()">
+        <label class="field">
+          <span>Source</span>
+          <select formControlName="sourceId">
+            @for (source of sources(); track source.id) {
+              <option [value]="source.id">{{ source.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span>Category</span>
+          <input type="text" formControlName="category" placeholder="Material / Energy" />
+        </label>
+        <label class="field">
+          <span>Material</span>
+          <input type="text" formControlName="material" />
+        </label>
+        <label class="field">
+          <span>Unit</span>
+          <input type="text" formControlName="unit" />
+        </label>
+        <label class="field">
+          <span>Carbon Factor (kgCO₂e/unit)</span>
+          <input type="number" step="any" formControlName="carbonFactor" />
+        </label>
+        <label class="field field--full">
+          <span>Description</span>
+          <input type="text" formControlName="description" />
+        </label>
+        <div class="form__actions field--full">
+          <button type="button" class="btn btn--ghost" (click)="closeEditor()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Factor</button>
+        </div>
+      </form>
+    </article>
+  }
+
+  <div class="grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Emission Sources</h2>
+        <button type="button" class="btn btn--primary btn--small" (click)="openCreateSource()">
+          <span class="material-symbols-outlined">add</span>
+          Add
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <input
+          type="search"
+          placeholder="Search sources…"
+          [value]="sourceQuery()"
+          (input)="sourceQuery.set($any($event.target).value)"
+        />
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Organization</th>
+            <th>Year</th>
+            <th>Version</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (source of filteredSources(); track source.id) {
+            <tr>
+              <td>
+                <strong>{{ source.name }}</strong>
+                <div class="muted">{{ source.country }}</div>
+              </td>
+              <td>{{ source.organization }}</td>
+              <td>{{ source.year }}</td>
+              <td>{{ source.version }}</td>
+              <td>
+                <div class="actions">
+                  <button type="button" class="link-btn" (click)="openEditSource(source)">
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="link-btn link-btn--danger"
+                    (click)="deleteSource(source)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">No sources found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Emission Factors</h2>
+        <button
+          type="button"
+          class="btn btn--primary btn--small"
+          [disabled]="sources().length === 0"
+          (click)="openCreateFactor()"
+        >
+          <span class="material-symbols-outlined">add</span>
+          Add
+        </button>
+      </div>
+
+      <div class="toolbar toolbar--split">
+        <input
+          type="search"
+          placeholder="Search factors…"
+          [value]="factorQuery()"
+          (input)="factorQuery.set($any($event.target).value)"
+        />
+        <select
+          [value]="sourceFilterId()"
+          (change)="sourceFilterId.set($any($event.target).value)"
+        >
+          <option value="all">All sources</option>
+          @for (source of sources(); track source.id) {
+            <option [value]="source.id">{{ source.name }}</option>
+          }
+        </select>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Material</th>
+            <th>Source</th>
+            <th>Category</th>
+            <th>Unit</th>
+            <th>kgCO₂e</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (factor of filteredFactors(); track factor.id) {
+            <tr>
+              <td>
+                <strong>{{ factor.material }}</strong>
+                @if (factor.description) {
+                  <div class="muted">{{ factor.description }}</div>
+                }
+              </td>
+              <td>{{ sourceName(factor.sourceId) }}</td>
+              <td>{{ factor.category }}</td>
+              <td>{{ factor.unit }}</td>
+              <td>{{ factor.carbonFactor | number: '1.0-4' }}</td>
+              <td>
+                <div class="actions">
+                  <button type="button" class="link-btn" (click)="openEditFactor(factor)">
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="link-btn link-btn--danger"
+                    (click)="deleteFactor(factor)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">No factors found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </div>
+</section>

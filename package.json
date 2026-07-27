@@ -1,38 +1,76 @@
 {
   "name": "lcsoft-tgo-model",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "electron/main.js",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:electron": "ng build --configuration=electron",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:LCSoft_TGO_Model": "node dist/LCSoft_TGO_Model/server/server.mjs"
+    "electron": "npm run build:electron && electron .",
+    "electron:dev": "concurrently -k \"ng serve --port 4200\" \"wait-on http://localhost:4200 && cross-env ELECTRON_START_URL=http://localhost:4200 electron .\"",
+    "dist": "npm run build:electron && electron-builder"
+  },
+  "build": {
+    "appId": "com.lcsoft.tgomodel",
+    "productName": "LCSoft TGO Model",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
   },
   "private": true,
   "packageManager": "npm@12.0.1",
   "dependencies": {
+    "@angular/animations": "^22.0.7",
+    "@angular/cdk": "^22.0.5",
     "@angular/common": "^22.0.0",
     "@angular/compiler": "^22.0.0",
     "@angular/core": "^22.0.0",
     "@angular/forms": "^22.0.0",
+    "@angular/material": "^22.0.5",
     "@angular/platform-browser": "^22.0.0",
-    "@angular/platform-server": "^22.0.0",
     "@angular/router": "^22.0.0",
-    "@angular/ssr": "^22.0.1",
-    "express": "^5.1.0",
+    "@swimlane/ngx-graph": "^12.0.0",
+    "echarts": "^6.1.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "ngx-echarts": "^22.0.0",
+    "ngx-sonner": "^3.1.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "sql.js": "^1.14.1",
+    "tslib": "^2.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@angular/build": "^22.0.1",
     "@angular/cli": "^22.0.1",
     "@angular/compiler-cli": "^22.0.0",
-    "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "wait-on": "^9.0.10"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.5.6": true,
+    "core-js@3.49.0": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.27.7": true,
+    "lmdb@3.5.4": true,
+    "msgpackr-extract@3.0.4": true
   }
 }

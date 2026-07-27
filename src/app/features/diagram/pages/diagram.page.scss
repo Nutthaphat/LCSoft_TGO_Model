@@ -1,0 +1,277 @@
+.diagram-page {
+  min-height: calc(100vh - var(--topbar-height));
+}
+
+.diagram-header {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.diagram-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: end;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.8rem;
+  min-width: 220px;
+}
+
+.field--narrow {
+  min-width: 140px;
+}
+
+.field input {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  padding-bottom: 8px;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding-bottom: 8px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.swatch--low {
+  background: #2e7d32;
+}
+
+.swatch--mid {
+  background: #f9a825;
+}
+
+.swatch--high {
+  background: #c62828;
+}
+
+.diagram-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-2);
+  min-height: 640px;
+}
+
+.chart-panel {
+  background:
+    linear-gradient(180deg, rgba(46, 125, 50, 0.04), transparent 40%),
+    var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 640px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+}
+
+.chart-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.chart-panel__header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chart {
+  flex: 1;
+  width: 100%;
+  min-height: 520px;
+}
+
+.chart-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 520px;
+  color: var(--color-text-muted);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.panel__header h2,
+.panel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panel h3 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.details > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.details dt {
+  color: var(--color-text-muted);
+}
+
+.details dd {
+  margin: 0;
+  font-weight: 550;
+}
+
+.comp-list,
+.node-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.comp-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.85rem;
+}
+
+.node-list {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.node-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.node-list button:hover {
+  background: var(--color-primary-light);
+}
+
+.node-list button.is-selected {
+  background: var(--color-primary-light);
+  outline: 1px solid var(--color-primary);
+}
+
+.node-list__text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.node-list__text strong {
+  font-size: 0.85rem;
+}
+
+.node-list__text small {
+  color: var(--color-text-muted);
+}
+
+.node-list__cf {
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 1400px) {
+  .diagram-layout {
+    grid-template-columns: 1fr;
+  }
+}

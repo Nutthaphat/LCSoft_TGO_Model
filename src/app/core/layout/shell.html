@@ -1,0 +1,56 @@
+<div class="shell">
+  <aside class="shell__sidebar">
+    <div class="shell__brand">
+      <!-- <span class="material-symbols-outlined shell__brand-icon">eco</span> -->
+      <span>
+        <img src="assets/images/LCSoft-logo.svg" alt="LCSoft Logo" class="shell__brand-icon" />
+      </span>
+
+      <div>
+        <div class="shell__brand-name">LCSoft TGO</div>
+        <div class="shell__brand-sub">Carbon Footprint</div>
+      </div>
+    </div>
+
+    <nav class="shell__nav" aria-label="Main">
+      @for (item of navItems; track item.path) {
+        <a
+          class="shell__nav-item"
+          [routerLink]="item.path"
+          routerLinkActive="shell__nav-item--active"
+        >
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="shell__partner">
+      <img
+        src="assets/images/PSEforSPEED-logo.png"
+        alt="PSEforSPEED"
+        class="shell__partner-logo"
+      />
+    </div>
+
+    <div class="shell__footer">
+      <span class="material-symbols-outlined">person</span>
+      <span>Local User</span>
+    </div>
+  </aside>
+
+  <div class="shell__main">
+    <header class="shell__topbar">
+      <div>
+        <div class="shell__topbar-title">Industrial Process Carbon Footprint</div>
+        <div class="shell__topbar-project">
+          Active project: <strong>{{ project().name }}</strong>
+        </div>
+      </div>
+      <div class="shell__topbar-meta">{{ runtimeLabel() }}</div>
+    </header>
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

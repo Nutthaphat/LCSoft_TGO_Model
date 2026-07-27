@@ -1,0 +1,50 @@
+<section class="page">
+  <header class="page__header equipment-header">
+    <div>
+      <h1 class="page__title">Equipment</h1>
+      <p class="page__subtitle">
+        Import LCSoft equipment tables and review energy-related carbon contributions.
+      </p>
+    </div>
+    <label class="btn btn--primary">
+      <span class="material-symbols-outlined">upload_file</span>
+      {{ importing() ? 'Importing…' : 'Import Equipment Excel' }}
+      <input type="file" accept=".xlsx,.xls" hidden (change)="onFileSelected($event)" />
+    </label>
+  </header>
+
+  <article class="panel">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Electricity</th>
+          <th>Heating Duty</th>
+          <th>Cooling Duty</th>
+          <th>Unit</th>
+          <th>CO₂e (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of equipment(); track item.id) {
+          <tr>
+            <td>{{ item.equipmentId }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.type }}</td>
+            <td>{{ item.electricityConsumption ?? '—' }}</td>
+            <td>{{ item.heatingDuty ?? '—' }}</td>
+            <td>{{ item.coolingDuty ?? '—' }}</td>
+            <td>{{ item.energyUnit }}</td>
+            <td>{{ item.carbonFootprintKg | number: '1.0-1' }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8">No equipment loaded.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </article>
+</section>

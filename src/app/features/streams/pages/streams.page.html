@@ -1,0 +1,110 @@
+<section class="page">
+  <header class="page__header streams-header">
+    <div>
+      <h1 class="page__title">Streams</h1>
+      <p class="page__subtitle">
+        Import LCSoft stream tables (Excel) and review stream carbon contributions.
+      </p>
+    </div>
+    <label class="btn btn--primary">
+      <span class="material-symbols-outlined">upload_file</span>
+      {{ importing() ? 'Importing…' : 'Import Stream Excel' }}
+      <input type="file" accept=".xlsx,.xls" hidden (change)="onFileSelected($event)" />
+    </label>
+  </header>
+
+  <div class="streams-layout">
+    <article class="panel streams-list">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream ID</th>
+            <th>Name</th>
+            <th>Phase</th>
+            <th>Flow</th>
+            <th>Number of components</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of streams(); track stream.id) {
+            <tr
+              class="stream-row"
+              [class.stream-row--selected]="selectedStreamId() === stream.id"
+              (click)="selectStream(stream)"
+            >
+              <td>{{ stream.streamId }}</td>
+              <td>{{ stream.name }}</td>
+              <td>{{ stream.phase }}</td>
+              <td>{{ stream.flowRate | number: '1.0-1' }} {{ stream.unit }}</td>
+              <td>{{ stream.components.length }}</td>
+              <td>{{ stream.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">No streams loaded.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <aside class="panel preview-panel">
+      <div class="panel__header">
+        <h2>Component Preview</h2>
+        @if (selectedStream()) {
+          <button type="button" class="link-btn" (click)="clearSelection()">Clear</button>
+        }
+      </div>
+
+      @if (selectedStream(); as stream) {
+        <dl class="details">
+          <div>
+            <dt>Stream ID</dt>
+            <dd>{{ stream.streamId }}</dd>
+          </div>
+          <div>
+            <dt>Name</dt>
+            <dd>{{ stream.name }}</dd>
+          </div>
+          <div>
+            <dt>Phase</dt>
+            <dd>{{ stream.phase }}</dd>
+          </div>
+          <div>
+            <dt>Flow</dt>
+            <dd>{{ stream.flowRate | number: '1.0-1' }} {{ stream.unit }}</dd>
+          </div>
+          <div>
+            <dt>Components</dt>
+            <dd>{{ stream.components.length }}</dd>
+          </div>
+        </dl>
+
+        <h3>Components</h3>
+        @if (stream.components.length) {
+          <table class="table table--compact">
+            <thead>
+              <tr>
+                <th>Component name</th>
+                <th>Flow</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (component of stream.components; track component.componentName) {
+                <tr>
+                  <td>{{ component.componentName }}</td>
+                  <td>{{ component.flowRate | number: '1.0-1' }} {{ component.unit }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="muted">No components in this stream.</p>
+        }
+      } @else {
+        <p class="muted">Select a stream to preview components.</p>
+      }
+    </aside>
+  </div>
+</section>

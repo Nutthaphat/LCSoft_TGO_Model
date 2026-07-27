@@ -1,0 +1,349 @@
+<section class="page">
+  <header class="page__header calc-header">
+    <div>
+      <h1 class="page__title">Calculation</h1>
+      <p class="page__subtitle">
+        Project: {{ project().name }} · Stream CF = Flow × EF · Equipment CF = Energy × EF
+      </p>
+    </div>
+    <button type="button" class="btn btn--primary" [disabled]="!canRun()" (click)="run()">
+      <span class="material-symbols-outlined">calculate</span>
+      {{ running() ? 'Calculating…' : 'Run Calculation' }}
+    </button>
+  </header>
+
+  <div class="selection-grid">
+    <article class="panel selection-panel">
+      <div class="panel__header selection-panel__header">
+        <div>
+          <h2>Select Streams</h2>
+          <p class="selection-panel__hint">
+            Choose which streams to include before running calculation.
+            {{ selectedStreamCount() }} of {{ streams().length }} selected.
+          </p>
+        </div>
+        <div class="selection-panel__actions">
+          <button type="button" class="btn btn--ghost" (click)="clearStreamSelection()">Clear</button>
+        </div>
+      </div>
+
+      @if (streams().length) {
+        <div class="selection-list">
+          @for (stream of streams(); track stream.id) {
+            <label class="check selection-item">
+              <input
+                type="checkbox"
+                [checked]="isStreamSelected(stream.id)"
+                (change)="toggleStream(stream.id, $any($event.target).checked)"
+              />
+              <span class="selection-item__body">
+                <span class="selection-item__name">{{ stream.name }}</span>
+                <span class="selection-item__meta">
+                  {{ stream.streamId }} · {{ stream.phase }} ·
+                  {{ stream.flowRate | number: '1.0-1' }} {{ stream.unit }} ·
+                  {{ stream.components.length }} components
+                </span>
+              </span>
+            </label>
+          }
+        </div>
+      } @else {
+        <p class="selection-empty">No streams loaded. Import streams first, then select them here.</p>
+      }
+    </article>
+
+    <article class="panel selection-panel">
+      <div class="panel__header selection-panel__header">
+        <div>
+          <h2>Select Equipment</h2>
+          <p class="selection-panel__hint">
+            Choose which equipment to include before running calculation.
+            {{ selectedEquipmentCount() }} of {{ equipment().length }} selected.
+          </p>
+        </div>
+        <div class="selection-panel__actions">
+          <button type="button" class="btn btn--ghost" (click)="selectAllEquipment()">Select all</button>
+          <button type="button" class="btn btn--ghost" (click)="clearEquipmentSelection()">Clear</button>
+        </div>
+      </div>
+
+      @if (equipment().length) {
+        <div class="selection-toolbar">
+          <label class="check check--all">
+            <input
+              type="checkbox"
+              [checked]="allEquipmentSelected()"
+              (change)="onSelectAllEquipmentChange($any($event.target).checked)"
+            />
+            All equipment
+          </label>
+        </div>
+        <div class="selection-list">
+          @for (item of equipment(); track item.id) {
+            <label class="check selection-item">
+              <input
+                type="checkbox"
+                [checked]="isEquipmentSelected(item.id)"
+                (change)="toggleEquipment(item.id, $any($event.target).checked)"
+              />
+              <span class="selection-item__body">
+                <span class="selection-item__name">{{ item.name }}</span>
+                <span class="selection-item__meta">
+                  {{ item.equipmentId }} · {{ item.type }}
+                  @if (item.electricityConsumption !== null) {
+                    · {{ item.electricityConsumption | number: '1.0-1' }} {{ item.energyUnit }}
+                  }
+                </span>
+              </span>
+            </label>
+          }
+        </div>
+      } @else {
+        <p class="selection-empty">No equipment loaded. Import equipment first, then select them here.</p>
+      }
+    </article>
+  </div>
+
+  <div class="formula-row">
+    <article class="formula-card">
+      <h2>Stream</h2>
+      <code>CF = Σ (Flow Rate × Emission Factor)</code>
+    </article>
+    <article class="formula-card">
+      <h2>Equipment</h2>
+      <code>CF = Electricity(kWh)×EF + Duty(MJ)×EF</code>
+    </article>
+    <article class="formula-card">
+      <h2>Total</h2>
+      <code>Total = Σ Stream CF + Σ Equipment CF</code>
+    </article>
+  </div>
+
+  <div class="kpi-row">
+    <article class="kpi">
+      <div class="kpi__label">Total CO₂e</div>
+      <div class="kpi__value">{{ totalCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Stream Emissions</div>
+      <div class="kpi__value">{{ streamCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Equipment Emissions</div>
+      <div class="kpi__value">{{ equipmentCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Last Calculation</div>
+      <div class="kpi__value kpi__value--text">
+        {{ project().lastCalculationDate | date: 'mediumDate' }}
+      </div>
+    </article>
+  </div>
+
+  @if (lastSummary(); as summary) {
+    <div class="meta-row">
+      <span>Streams calculated: {{ summary.calculatedStreamCount }}</span>
+      <span>Equipment calculated: {{ summary.calculatedEquipmentCount }}</span>
+      <span>Missing factors: {{ summary.missingFactorCount }}</span>
+    </div>
+
+    @if (summary.warnings.length) {
+      <article class="panel panel--warn">
+        <h2>Warnings</h2>
+        <ul>
+          @for (warning of summary.warnings; track warning) {
+            <li>{{ warning }}</li>
+          }
+        </ul>
+      </article>
+    }
+  }
+
+  <div class="lists-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Stream Results</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream</th>
+            <th>Components</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of selectedStreams(); track stream.id) {
+            <tr>
+              <td>{{ stream.name }}</td>
+              <td>{{ stream.components.length }}</td>
+              <td>{{ stream.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="selection-empty">No streams selected.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Equipment Results</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipment</th>
+            <th>Type</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of selectedEquipment(); track item.id) {
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="selection-empty">No equipment selected.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </div>
+
+  @if (lastSummary(); as summary) {
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Component Detail (last run)</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream</th>
+            <th>Component</th>
+            <th>Flow</th>
+            <th>EF</th>
+            <th>CO₂e (kg)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of summary.streams; track stream.streamId) {
+            @for (component of stream.components; track component.componentName) {
+              @if (component.flowRate > 0) {
+                <tr>
+                  <td>{{ stream.streamName }}</td>
+                  <td>{{ component.componentName }}</td>
+                  <td>{{ component.flowRate | number: '1.0-2' }} {{ component.unit }}</td>
+                  <td>
+                    {{
+                      component.emissionFactorValue === null
+                        ? '—'
+                        : (component.emissionFactorValue | number: '1.0-4')
+                    }}
+                  </td>
+                  <td>{{ component.carbonFootprintKg | number: '1.0-2' }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge--ok]="component.matched"
+                      [class.badge--miss]="!component.matched"
+                    >
+                      {{ component.matched ? 'Matched' : 'Missing EF' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Equipment Energy Detail (last run)</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipment</th>
+            <th>Energy</th>
+            <th>Input</th>
+            <th>Converted</th>
+            <th>EF</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of summary.equipment; track item.equipmentId) {
+            @for (line of item.energyLines; track line.energyType) {
+              <tr>
+                <td>{{ item.equipmentName }}</td>
+                <td>{{ line.energyType }}</td>
+                <td>{{ line.quantity | number: '1.0-3' }} {{ line.inputUnit }}</td>
+                <td>
+                  {{ line.convertedQuantity | number: '1.0-2' }} {{ line.convertedUnit }}
+                </td>
+                <td>
+                  {{
+                    line.emissionFactorValue === null
+                      ? '—'
+                      : (line.emissionFactorValue | number: '1.0-4')
+                  }}
+                </td>
+                <td>{{ line.carbonFootprintKg | number: '1.0-2' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </article>
+  }
+
+  <article class="panel">
+    <div class="panel__header">
+      <h2>Calculation History</h2>
+      <button
+        type="button"
+        class="btn btn--ghost"
+        [disabled]="calculations().length === 0"
+        (click)="clearHistory()"
+      >
+        Clear
+      </button>
+    </div>
+    @if (calculations().length) {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Date</th>
+            <th>Streams</th>
+            <th>Equipment</th>
+            <th>Total CO₂e</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (calc of calculations(); track calc.id) {
+            <tr>
+              <td>{{ calc.version }}</td>
+              <td>{{ calc.calculationDate | date: 'mediumDate' }}</td>
+              <td>{{ calc.streamCarbonKg | number: '1.0-1' }}</td>
+              <td>{{ calc.equipmentCarbonKg | number: '1.0-1' }}</td>
+              <td>{{ calc.totalCarbonKg | number: '1.0-1' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="selection-empty">No calculation history yet.</p>
+    }
+  </article>
+</section>

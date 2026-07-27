@@ -1,0 +1,18 @@
+<article class="kpi" [attr.data-tone]="tone()">
+  <div class="kpi__icon">
+    <span class="material-symbols-outlined">{{ icon() }}</span>
+  </div>
+  <div class="kpi__body">
+    <div class="kpi__label">{{ label() }}</div>
+    <div class="kpi__value">
+      @if (isNumeric()) {
+        {{ value() | number: '1.0-1' }}
+      } @else {
+        {{ value() }}
+      }
+      @if (unit()) {
+        <span class="kpi__unit">{{ unit() }}</span>
+      }
+    </div>
+  </div>
+</article>

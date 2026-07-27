@@ -6,6 +6,11 @@
 /out-tsc
 /bazel-out
 
+# Release / Build output
+/release
+/release/
+*.exe
+
 # Node
 /node_modules
 npm-debug.log

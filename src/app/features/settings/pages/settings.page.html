@@ -1,0 +1,37 @@
+<section class="page">
+  <header class="page__header">
+    <h1 class="page__title">Backup</h1>
+    <p class="page__subtitle">
+      Local database backup, data export, and system restore preferences.
+    </p>
+  </header>
+
+  <article class="panel">
+    <h2>Runtime</h2>
+    <dl class="details">
+      <div>
+        <dt>Mode</dt>
+        <dd>{{ isElectron ? 'Electron desktop' : 'Browser (ng serve)' }}</dd>
+      </div>
+      <div>
+        <dt>Database</dt>
+        <dd>{{ isElectron ? 'SQLite via IPC' : 'localStorage fallback' }}</dd>
+      </div>
+      <div>
+        <dt>SQLite path</dt>
+        <dd class="path">{{ dbPath() }}</dd>
+      </div>
+    </dl>
+
+    @if (isElectron) {
+      <button type="button" class="btn btn--primary" [disabled]="backingUp()" (click)="backupDatabase()">
+        <span class="material-symbols-outlined">backup</span>
+        {{ backingUp() ? 'Backing up…' : 'Backup SQLite Database' }}
+      </button>
+    } @else {
+      <p class="hint">
+        Run <code>npm run electron:dev</code> to use SQLite persistence in the desktop shell.
+      </p>
+    }
+  </article> 
+</section>

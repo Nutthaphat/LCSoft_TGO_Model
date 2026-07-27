@@ -1,0 +1,178 @@
+<section class="page diagram-page">
+  <header class="page__header diagram-header">
+    <div>
+      <h1 class="page__title">Process Flow Diagram</h1>
+      <p class="page__subtitle">
+        Project: {{ project().name }}
+      </p>
+    </div>
+  </header>
+
+  <div class="diagram-toolbar">
+    <label class="field">
+      <span>Search</span>
+      <input
+        type="search"
+        placeholder="Stream or equipment…"
+        [ngModel]="filters().search"
+        (ngModelChange)="setSearch($event)"
+      />
+    </label>
+
+    <label class="check">
+      <input
+        type="checkbox"
+        [ngModel]="filters().showStreams"
+        (ngModelChange)="toggleStreams($event)"
+      />
+      Streams
+    </label>
+
+    <label class="check">
+      <input
+        type="checkbox"
+        [ngModel]="filters().showEquipment"
+        (ngModelChange)="toggleEquipment($event)"
+      />
+      Equipment
+    </label>
+
+    <label class="check">
+      <input
+        type="checkbox"
+        [ngModel]="filters().highCarbonOnly"
+        (ngModelChange)="toggleHighCarbon($event)"
+      />
+      High carbon only
+    </label>
+
+    <label class="field field--narrow">
+      <span>Min CO₂e (kg)</span>
+      <input
+        type="number"
+        min="0"
+        [ngModel]="filters().minCarbonKg"
+        (ngModelChange)="setMinCarbon(+$event)"
+      />
+    </label>
+
+    <div class="legend">
+      <span><i class="swatch swatch--low"></i> Low (&lt;33%)</span>
+      <span><i class="swatch swatch--mid"></i> Medium (33–66%)</span>
+      <span><i class="swatch swatch--high"></i> High (≥66%)</span>
+    </div>
+  </div>
+
+  <div class="diagram-layout">
+    <div class="chart-panel">
+      <div class="chart-panel__header">
+        <h2>{{ chartTitle() }}</h2>
+        @if (selectedNode()) {
+          <button type="button" class="link-btn" (click)="clearSelection()">
+            Back to overview
+          </button>
+        }
+      </div>
+
+      @if (nodeCount() === 0) {
+        <div class="empty">
+          No nodes to display. Select streams/equipment on Calculation, or relax filters.
+        </div>
+      } @else if (chartEmptyMessage(); as emptyMsg) {
+        <div class="empty">{{ emptyMsg }}</div>
+      } @else if (activeChart(); as options) {
+        <div
+          echarts
+          [options]="options"
+          class="chart"
+          (chartClick)="onChartClick($event)"
+        ></div>
+        @if (!selectedNode()) {
+          <p class="chart-hint">Click a bar to inspect that node.</p>
+        }
+      }
+    </div>
+
+    <aside class="side-panel">
+      <article class="panel">
+        <div class="panel__header">
+          <h2>Selection</h2>
+          @if (selectedNode()) {
+            <button type="button" class="link-btn" (click)="clearSelection()">Clear</button>
+          }
+        </div>
+
+        @if (selectedNode(); as node) {
+          @if (node.data.kind === 'stream' && node.data.stream; as stream) {
+            <dl class="details">
+              <div><dt>Type</dt><dd>Stream</dd></div>
+              <div><dt>ID</dt><dd>{{ stream.streamId }}</dd></div>
+              <div><dt>Name</dt><dd>{{ stream.name }}</dd></div>
+              <div><dt>Phase</dt><dd>{{ stream.phase }}</dd></div>
+              <div><dt>Flow</dt><dd>{{ stream.flowRate | number: '1.0-1' }} {{ stream.unit }}</dd></div>
+              <div><dt>Temp</dt><dd>{{ stream.temperatureC ?? '—' }} °C</dd></div>
+              <div><dt>Pressure</dt><dd>{{ stream.pressureAtm ?? '—' }} atm</dd></div>
+              <div><dt>CO₂e</dt><dd>{{ stream.carbonFootprintKg | number: '1.0-1' }} kg</dd></div>
+              <div><dt>Components</dt><dd>{{ stream.components.length }}</dd></div>
+            </dl>
+            @if (stream.components.length) {
+              <h3>Components</h3>
+              <ul class="comp-list">
+                @for (component of stream.components; track component.componentName) {
+                  <li>
+                    {{ component.componentName }}
+                    <span>{{ component.flowRate | number: '1.0-1' }} {{ component.unit }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          @if (node.data.kind === 'equipment' && node.data.equipment; as item) {
+            <dl class="details">
+              <div><dt>Type</dt><dd>Equipment</dd></div>
+              <div><dt>ID</dt><dd>{{ item.equipmentId }}</dd></div>
+              <div><dt>Name</dt><dd>{{ item.name }}</dd></div>
+              <div><dt>Equipment Type</dt><dd>{{ item.type }}</dd></div>
+              <div>
+                <dt>Electricity</dt>
+                <dd>{{ item.electricityConsumption ?? '—' }} {{ item.energyUnit }}</dd>
+              </div>
+              <div><dt>Heating</dt><dd>{{ item.heatingDuty ?? '—' }}</dd></div>
+              <div><dt>Cooling</dt><dd>{{ item.coolingDuty ?? '—' }}</dd></div>
+              <div><dt>CO₂e</dt><dd>{{ item.carbonFootprintKg | number: '1.0-1' }} kg</dd></div>
+            </dl>
+          }
+        } @else {
+          <p class="muted">Select a node from the list or click a bar in the overview chart.</p>
+        }
+      </article>
+
+      <article class="panel">
+        <div class="panel__header">
+          <h2>Nodes ({{ nodeCount() }})</h2>
+        </div>
+        <ul class="node-list">
+          @for (node of graph().nodes; track node.id) {
+            <li>
+              <button
+                type="button"
+                [class.is-selected]="selectedId() === node.id"
+                (click)="selectFromList(node)"
+              >
+                <span class="dot" [style.background]="node.data.color"></span>
+                <span class="node-list__text">
+                  <strong>{{ node.label }}</strong>
+                  <small>{{ node.data.subtitle }}</small>
+                </span>
+                <span class="node-list__cf">
+                  {{ node.data.carbonFootprintKg | number: '1.0-0' }}
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      </article>
+    </aside>
+  </div>
+</section>

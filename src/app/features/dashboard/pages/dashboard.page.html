@@ -1,0 +1,180 @@
+<section class="page">
+  <header class="page__header dash-header">
+    <div>
+      <h1 class="page__title">Carbon Footprint Dashboard</h1>
+      <p class="page__subtitle">
+        Project: {{ data().project.name }} · Last calculation:
+        {{ data().kpis.lastCalculationDate | date: 'mediumDate' }}
+      </p>
+    </div>
+    <div class="dash-header__actions">
+      <button type="button" class="btn btn--ghost" [routerLink]="'/streams'">
+        View Streams
+      </button>
+      <button type="button" class="btn btn--ghost" [routerLink]="'/equipment'">
+        View Equipment
+      </button>
+    </div>
+  </header>
+
+  <div class="kpi-grid">
+    <app-kpi-card
+      label="Total CO₂e"
+      [value]="data().kpis.totalCarbonKg"
+      unit="kg"
+      icon="co2"
+      tone="primary"
+    />
+    <app-kpi-card
+      label="Streams"
+      [value]="data().kpis.totalStreams"
+      icon="water_drop"
+      tone="info"
+    />
+    <app-kpi-card
+      label="Equipment"
+      [value]="data().kpis.totalEquipment"
+      icon="build"
+      tone="warning"
+    />
+    <app-kpi-card
+      label="Sources"
+      [value]="data().kpis.totalEmissionSources"
+      icon="database"
+      tone="danger"
+    />
+    <app-kpi-card
+      label="Stream Emissions"
+      [value]="data().kpis.totalStreamEmissionsKg"
+      unit="kg"
+      icon="waves"
+      tone="info"
+    />
+    <app-kpi-card
+      label="Equipment Emissions"
+      [value]="data().kpis.totalEquipmentEmissionsKg"
+      unit="kg"
+      icon="bolt"
+      tone="warning"
+    />
+  </div>
+
+  <div class="chart-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Carbon by Category</h2>
+      </div>
+      <div echarts [options]="categoryChart()" class="chart"></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Top Carbon Contributors</h2>
+        <div class="segmented">
+          @for (limit of [5, 10, 20]; track limit) {
+            <button
+              type="button"
+              class="segmented__btn"
+              [class.segmented__btn--active]="topLimit() === limit"
+              (click)="setTopLimit($any(limit))"
+            >
+              Top {{ limit }}
+            </button>
+          }
+        </div>
+      </div>
+      <div echarts [options]="contributorsChart()" class="chart"></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Emission Source Usage</h2>
+      </div>
+      <div echarts [options]="sourceChart()" class="chart"></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Carbon Trend</h2>
+      </div>
+      <div echarts [options]="trendChart()" class="chart"></div>
+    </article>
+  </div>
+
+  <div class="lists-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Top Streams</h2>
+        <a class="link" routerLink="/streams">Manage</a>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream</th>
+            <th>Phase</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of data().topStreams; track stream.id) {
+            <tr>
+              <td>{{ stream.name }}</td>
+              <td>{{ stream.phase }}</td>
+              <td>{{ stream.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Top Equipment</h2>
+        <a class="link" routerLink="/equipment">Manage</a>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipment</th>
+            <th>Type</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of data().topEquipment; track item.id) {
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Recent Calculations</h2>
+        <a class="link" routerLink="/calculation">Open</a>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Date</th>
+            <th>Total CO₂e</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (calc of data().recentCalculations; track calc.id) {
+            <tr>
+              <td>{{ calc.version }}</td>
+              <td>{{ calc.calculationDate | date: 'mediumDate' }}</td>
+              <td>{{ calc.totalCarbonKg | number: '1.0-1' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </div>
+</section>

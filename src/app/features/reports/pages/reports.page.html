@@ -1,0 +1,186 @@
+<section class="page">
+  <header class="page__header reports-header">
+    <div>
+      <h1 class="page__title">Reports</h1>
+      <p class="page__subtitle">
+        Export carbon footprint summaries for
+        <strong>{{ project().name }}</strong>
+        as Excel or PDF.
+      </p>
+    </div>
+    <div class="reports-header__actions">
+      <button
+        type="button"
+        class="btn btn--ghost"
+        [disabled]="exporting()"
+        (click)="exportExcel()"
+      >
+        <span class="material-symbols-outlined">table_view</span>
+        Export Excel
+      </button>
+      <button
+        type="button"
+        class="btn btn--primary"
+        [disabled]="exporting()"
+        (click)="exportPdf()"
+      >
+        <span class="material-symbols-outlined">picture_as_pdf</span>
+        Export PDF
+      </button>
+    </div>
+  </header>
+
+  <div class="kpi-row">
+    <article class="kpi">
+      <div class="kpi__label">Total CO₂e</div>
+      <div class="kpi__value">
+        {{ report().summary.totalCarbonKg | number: '1.0-1' }} <span>kg</span>
+      </div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Stream Emissions</div>
+      <div class="kpi__value">
+        {{ report().summary.streamCarbonKg | number: '1.0-1' }} <span>kg</span>
+      </div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Equipment Emissions</div>
+      <div class="kpi__value">
+        {{ report().summary.equipmentCarbonKg | number: '1.0-1' }} <span>kg</span>
+      </div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Last Calculation</div>
+      <div class="kpi__value kpi__value--text">
+        {{ report().summary.lastCalculationDate | date: 'mediumDate' }}
+      </div>
+    </article>
+  </div>
+
+  <div class="content-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Report Sections</h2>
+      </div>
+      <div class="checks">
+        <label class="check">
+          <input type="checkbox" [ngModel]="includeSummary()" (ngModelChange)="includeSummary.set($event)" />
+          Carbon Footprint Summary
+        </label>
+        <label class="check">
+          <input type="checkbox" [ngModel]="includeStreams()" (ngModelChange)="includeStreams.set($event)" />
+          Stream Summary
+        </label>
+        <label class="check">
+          <input type="checkbox" [ngModel]="includeEquipment()" (ngModelChange)="includeEquipment.set($event)" />
+          Equipment Summary
+        </label>
+        <label class="check">
+          <input type="checkbox" [ngModel]="includeFactors()" (ngModelChange)="includeFactors.set($event)" />
+          Emission Factor Summary
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [ngModel]="includeCalculations()"
+            (ngModelChange)="includeCalculations.set($event)"
+          />
+          Calculation History
+        </label>
+      </div>
+      <p class="hint">
+        Excel creates one sheet per section. PDF uses landscape A4 tables with the same data.
+      </p>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Report Preview</h2>
+      </div>
+      <dl class="preview">
+        <div>
+          <dt>Project</dt>
+          <dd>{{ report().summary.projectName }}</dd>
+        </div>
+        <div>
+          <dt>Streams</dt>
+          <dd>{{ report().summary.streamCount }}</dd>
+        </div>
+        <div>
+          <dt>Equipment</dt>
+          <dd>{{ report().summary.equipmentCount }}</dd>
+        </div>
+        <div>
+          <dt>Emission Sources</dt>
+          <dd>{{ report().summary.emissionSourceCount }}</dd>
+        </div>
+        <div>
+          <dt>Emission Factors</dt>
+          <dd>{{ report().summary.emissionFactorCount }}</dd>
+        </div>
+        <div>
+          <dt>Calculations</dt>
+          <dd>{{ report().calculations.length }}</dd>
+        </div>
+      </dl>
+    </article>
+  </div>
+
+  <div class="lists-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Top Streams</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream</th>
+            <th>Phase</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of report().topStreams; track stream.id) {
+            <tr>
+              <td>{{ stream.name }}</td>
+              <td>{{ stream.phase }}</td>
+              <td>{{ stream.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3">No stream data</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <h2>Top Equipment</h2>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipment</th>
+            <th>Type</th>
+            <th>CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of report().topEquipment; track item.id) {
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.carbonFootprintKg | number: '1.0-1' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3">No equipment data</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </div>
+</section>

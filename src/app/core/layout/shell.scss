@@ -1,0 +1,152 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(46, 125, 50, 0.08), transparent 40%),
+    linear-gradient(180deg, #f7faf7 0%, var(--color-bg) 100%);
+}
+
+.shell__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: linear-gradient(180deg, #1b5e20 0%, #2e7d32 55%, #388e3c 100%);
+  color: #f1f8f1;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+}
+
+// .shell__brand-icon {
+//   font-size: 2rem;
+// }
+.shell__brand-icon {
+  /* Set exact dimensions matching the original 2rem (32px) size */
+  width: 2rem;
+  height: 2rem;
+  
+  /* Ensures the image scales proportionally without stretching or distortion */
+  object-fit: contain; 
+  
+  /* Prevents image inline alignment gaps */
+  display: block; 
+  
+  /* Optional: keeps image crisp on low-res screens if using SVG or pixel art */
+  flex-shrink: 0; 
+}
+
+.shell__brand-name {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.shell__brand-sub {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.shell__nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.shell__nav-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.shell__nav-item--active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.shell__partner {
+  padding: 10px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.shell__partner-logo {
+  max-width: 100%;
+  height: auto;
+  max-height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.shell__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.shell__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--space-3);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.shell__topbar-title {
+  font-weight: 600;
+}
+
+.shell__topbar-project {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.shell__topbar-meta {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.shell__content {
+  flex: 1;
+  min-height: 0;
+}

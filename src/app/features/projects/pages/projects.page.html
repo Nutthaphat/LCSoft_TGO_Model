@@ -1,0 +1,122 @@
+<section class="page">
+  <header class="page__header projects-header">
+    <div>
+      <h1 class="page__title">Projects</h1>
+      <p class="page__subtitle">
+        Create, open, save, and export local projects. Active:
+        <strong>{{ activeProject().name }}</strong>
+      </p>
+    </div>
+    <div class="projects-header__actions">
+      <label class="btn btn--ghost">
+        <span class="material-symbols-outlined">upload</span>
+        Import JSON
+        <input type="file" accept=".json,application/json" hidden (change)="importProject($event)" />
+      </label>
+      <button type="button" class="btn btn--ghost" (click)="exportActive()">
+        <span class="material-symbols-outlined">download</span>
+        Export Active
+      </button>
+      <button type="button" class="btn btn--ghost" (click)="saveActive()">
+        <span class="material-symbols-outlined">save</span>
+        Save Active
+      </button>
+      <button type="button" class="btn btn--primary" (click)="openCreateForm()">
+        <span class="material-symbols-outlined">add</span>
+        New Project
+      </button>
+    </div>
+  </header>
+
+  @if (showCreateForm()) {
+    <article class="panel form-panel">
+      <h2>Create Project</h2>
+      <form class="form" [formGroup]="createForm" (ngSubmit)="createProject()">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" formControlName="name" placeholder="e.g. Plant A Carbon Study" />
+          @if (createForm.controls.name.touched && createForm.controls.name.invalid) {
+            <small class="error">Name is required (min 2 characters).</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea rows="3" formControlName="description" placeholder="Optional notes"></textarea>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" formControlName="seedDemoData" />
+          <span>Seed with demo streams/equipment</span>
+        </label>
+
+        <div class="form__actions">
+          <button type="button" class="btn btn--ghost" (click)="cancelCreate()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Create</button>
+        </div>
+      </form>
+    </article>
+  }
+
+  <article class="panel">
+    <div class="panel__header">
+      <h2>All Projects</h2>
+      <span class="muted">{{ projects().length }} saved locally</span>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Streams</th>
+          <th>Equipment</th>
+          <th>Total CO₂e</th>
+          <th>Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of projects(); track item.id) {
+          <tr [class.row--active]="item.id === activeId()">
+            <td>
+              @if (editingId() === item.id) {
+                <form class="inline-edit" [formGroup]="editForm" (ngSubmit)="saveEdit(item)">
+                  <input type="text" formControlName="name" />
+                  <input type="text" formControlName="description" placeholder="Description" />
+                  <button type="submit" class="link-btn">Save</button>
+                  <button type="button" class="link-btn" (click)="cancelEdit()">Cancel</button>
+                </form>
+              } @else {
+                <div class="name-cell">
+                  <strong>{{ item.name }}</strong>
+                  @if (item.id === activeId()) {
+                    <span class="badge">Active</span>
+                  }
+                  <div class="muted">{{ item.description || 'No description' }}</div>
+                </div>
+              }
+            </td>
+            <td>{{ item.streamCount }}</td>
+            <td>{{ item.equipmentCount }}</td>
+            <td>{{ item.totalCarbonKg | number: '1.0-1' }}</td>
+            <td>{{ item.updatedAt | date: 'medium' }}</td>
+            <td>
+              <div class="actions">
+                <button type="button" class="link-btn" (click)="openProject(item)">Open</button>
+                <button type="button" class="link-btn" (click)="startEdit(item)">Edit</button>
+                <button type="button" class="link-btn" (click)="duplicate(item)">Duplicate</button>
+                <button type="button" class="link-btn link-btn--danger" (click)="delete(item)">
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6">No projects yet. Create one to get started.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </article>
+</section>
