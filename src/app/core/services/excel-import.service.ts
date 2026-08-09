@@ -210,6 +210,14 @@ export class ExcelImportService {
           }
 
           const name = String(rawName);
+
+          if (currentType === 'Distillation Column') {
+            equipment.push(
+              ...this.buildDistillationColumnEquipment(projectId, name, propertyRows, col),
+            );
+            continue;
+          }
+
           const work = this.findNumeric(propertyRows, ['Work'], col);
           const duty = this.findNumeric(propertyRows, ['Duty'], col);
           const temperatureC = this.findNumeric(propertyRows, ['Temperature'], col);
@@ -241,6 +249,62 @@ export class ExcelImportService {
     return equipment;
   }
 
+  /**
+   * LCSoft Column tables expose Condenser Duty (cooling) and Reboiler Duty (heating)
+   * as separate rows — import each as its own equipment item.
+   */
+  private buildDistillationColumnEquipment(
+    projectId: string,
+    name: string,
+    propertyRows: { key: string; values: (string | number | null)[] }[],
+    col: number,
+  ): Equipment[] {
+    const condenserDuty = this.findNumeric(propertyRows, ['Condenser Duty'], col);
+    const reboilerDuty = this.findNumeric(propertyRows, ['Reboiler Duty'], col);
+    const energyUnit =
+      this.findUnit(propertyRows, ['Condenser Duty', 'Reboiler Duty']) ?? 'MMkcal/hr';
+
+    const items: Equipment[] = [];
+
+    if (condenserDuty !== null) {
+      items.push({
+        id: `eq-import-${name}-condenser`,
+        projectId,
+        equipmentId: `${name} (Condenser)`,
+        name: `${name} (Condenser)`,
+        type: 'Distillation Column',
+        heatingDuty: null,
+        coolingDuty: Math.abs(condenserDuty),
+        electricityConsumption: null,
+        energyUnit,
+        temperatureC: null,
+        pressureAtm: null,
+        emissionSourceId: null,
+        carbonFootprintKg: 0,
+      });
+    }
+
+    if (reboilerDuty !== null) {
+      items.push({
+        id: `eq-import-${name}-reboiler`,
+        projectId,
+        equipmentId: `${name} (Reboiler)`,
+        name: `${name} (Reboiler)`,
+        type: 'Distillation Column',
+        heatingDuty: Math.abs(reboilerDuty),
+        coolingDuty: null,
+        electricityConsumption: null,
+        energyUnit,
+        temperatureC: null,
+        pressureAtm: null,
+        emissionSourceId: null,
+        carbonFootprintKg: 0,
+      });
+    }
+
+    return items;
+  }
+
   private findNumeric(
     rows: { key: string; values: (string | number | null)[] }[],
     keys: string[],
@@ -250,6 +314,17 @@ export class ExcelImportService {
       keys.some((key) => row.key.toLowerCase() === key.toLowerCase()),
     );
     return match ? this.toNumber(match.values[col]) : null;
+  }
+
+  private findUnit(
+    rows: { key: string; values: (string | number | null)[] }[],
+    keys: string[],
+  ): string | null {
+    const match = rows.find((row) =>
+      keys.some((key) => row.key.toLowerCase() === key.toLowerCase()),
+    );
+    const unit = match?.values[1];
+    return typeof unit === 'string' && unit.trim() ? unit.trim() : null;
   }
 
   private toNumber(value: string | number | null | undefined): number | null {

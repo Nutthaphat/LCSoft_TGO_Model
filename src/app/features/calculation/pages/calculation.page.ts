@@ -32,6 +32,7 @@ export class CalculationPage {
   readonly selectedEquipment = this.projectStore.selectedEquipment;
   readonly streamCarbonKg = this.projectStore.streamCarbonKg;
   readonly equipmentCarbonKg = this.projectStore.equipmentCarbonKg;
+  readonly transportCarbonKg = this.projectStore.transportCarbonKg;
   readonly totalCarbonKg = this.projectStore.totalCarbonKg;
 
   readonly running = signal(false);

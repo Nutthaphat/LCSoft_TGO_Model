@@ -1,12 +1,14 @@
-import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import {
   CalculationResult,
   CreateProjectInput,
+  EmissionFactor,
   Equipment,
   ProcessStream,
   Project,
   ProjectListItem,
   ProjectWorkspace,
+  StreamTransport,
 } from '../../models/domain.model';
 import {
   MOCK_CALCULATIONS,
@@ -68,10 +70,106 @@ export class ProjectStore {
     this.selectedEquipment().reduce((sum, item) => sum + item.carbonFootprintKg, 0),
   );
 
-  readonly totalCarbonKg = computed(() => this.streamCarbonKg() + this.equipmentCarbonKg());
+  readonly transportCarbonKg = computed(() => {
+    const factorById = this.factorIndex();
+    return this.selectedStreams().reduce(
+      (sum, stream) => sum + this.resolveTransportCarbonKg(stream.transport, factorById),
+      0,
+    );
+  });
+
+  readonly totalCarbonKg = computed(
+    () => this.streamCarbonKg() + this.equipmentCarbonKg() + this.transportCarbonKg(),
+  );
+
+  private readonly factorIndex = computed(() => {
+    const map = new Map<string, EmissionFactor>();
+    for (const factor of this.emissionDb.factors()) {
+      map.set(factor.id, factor);
+    }
+    return map;
+  });
 
   constructor() {
     this.initialize();
+
+    // Keep cached stream.transport.carbonFootprintKg in sync when EFs change.
+    effect(() => {
+      const factors = this.emissionDb.factors();
+      if (!this.initializedSignal()) {
+        return;
+      }
+      this.recomputeTransportCarbonFromFactors(factors);
+    });
+  }
+
+  /** Recalculate factor-based transport CF using current Emission Database values. */
+  recomputeTransportCarbonFromFactors(factors = this.emissionDb.factors()): void {
+    const factorById = new Map(factors.map((factor) => [factor.id, factor]));
+    let changed = false;
+
+    const next = this.streamsSignal().map((stream) => {
+      const transport = stream.transport;
+      if (!transport?.enabled || transport.inputMode !== 'factor') {
+        return stream;
+      }
+
+      const carbonFootprintKg = this.resolveTransportCarbonKg(transport, factorById);
+      const factor = transport.emissionFactorId
+        ? factorById.get(transport.emissionFactorId)
+        : undefined;
+      const activityUnit = factor?.unit ?? transport.activityUnit;
+
+      if (
+        carbonFootprintKg === transport.carbonFootprintKg &&
+        activityUnit === transport.activityUnit
+      ) {
+        return stream;
+      }
+
+      changed = true;
+      return {
+        ...stream,
+        transport: {
+          ...transport,
+          activityUnit,
+          carbonFootprintKg,
+        },
+      };
+    });
+
+    if (!changed) {
+      return;
+    }
+
+    this.streamsSignal.set(next);
+    this.markDirtyAndPersist();
+  }
+
+  resolveTransportCarbonKg(
+    transport: StreamTransport | null | undefined,
+    factorById: Map<string, EmissionFactor> = this.factorIndex(),
+  ): number {
+    if (!transport?.enabled) {
+      return 0;
+    }
+
+    if (transport.inputMode === 'manual') {
+      return this.roundCarbon(transport.manualCarbonFootprintKg ?? 0);
+    }
+
+    const factor = transport.emissionFactorId
+      ? factorById.get(transport.emissionFactorId)
+      : undefined;
+    if (!factor) {
+      return 0;
+    }
+
+    return this.roundCarbon(transport.activityAmount * factor.carbonFactor);
+  }
+
+  private roundCarbon(value: number): number {
+    return Math.round(value * 1000) / 1000;
   }
 
   setStreams(streams: ProcessStream[]): void {
@@ -93,6 +191,19 @@ export class ProjectStore {
       next.map((item) => item.id),
       this.selectedEquipmentIdsSignal,
     );
+    this.markDirtyAndPersist();
+  }
+
+  updateStreamTransport(streamId: string, transport: StreamTransport | null): void {
+    const streams = this.streamsSignal();
+    const index = streams.findIndex((stream) => stream.id === streamId);
+    if (index < 0) {
+      return;
+    }
+
+    const next = [...streams];
+    next[index] = { ...next[index], transport };
+    this.streamsSignal.set(next);
     this.markDirtyAndPersist();
   }
 
@@ -416,7 +527,12 @@ export class ProjectStore {
     this.projectSignal.set(workspace.project);
     this.streamsSignal.set(workspace.streams);
     this.equipmentSignal.set(workspace.equipment);
-    this.calculationsSignal.set(workspace.calculations);
+    this.calculationsSignal.set(
+      workspace.calculations.map((calc) => ({
+        ...calc,
+        transportCarbonKg: calc.transportCarbonKg ?? 0,
+      })),
+    );
     this.selectedStreamIdsSignal.set(new Set(workspace.streams.map((stream) => stream.id)));
     this.selectedEquipmentIdsSignal.set(
       new Set(workspace.equipment.map((item) => item.id)),

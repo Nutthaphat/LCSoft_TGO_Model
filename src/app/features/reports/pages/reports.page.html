@@ -50,6 +50,12 @@
       </div>
     </article>
     <article class="kpi">
+      <div class="kpi__label">Transport Emissions</div>
+      <div class="kpi__value">
+        {{ report().summary.transportCarbonKg | number: '1.0-1' }} <span>kg</span>
+      </div>
+    </article>
+    <article class="kpi">
       <div class="kpi__label">Last Calculation</div>
       <div class="kpi__value kpi__value--text">
         {{ report().summary.lastCalculationDate | date: 'mediumDate' }}
@@ -89,7 +95,8 @@
         </label>
       </div>
       <p class="hint">
-        Excel creates one sheet per section. PDF uses landscape A4 tables with the same data.
+        Excel creates one sheet per section. Stream Summary also adds a Transportation sheet
+        (distance × EF or manual kg). PDF uses landscape A4 tables with the same data.
       </p>
     </article>
 

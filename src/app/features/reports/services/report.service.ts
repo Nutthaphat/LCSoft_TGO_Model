@@ -38,15 +38,17 @@ export class ReportService {
 
     const streamCarbonKg = this.round(this.projectStore.streamCarbonKg());
     const equipmentCarbonKg = this.round(this.projectStore.equipmentCarbonKg());
+    const transportCarbonKg = this.round(this.projectStore.transportCarbonKg());
 
     const summary: ReportSummary = {
       projectName: project.name,
       projectDescription: project.description,
       generatedAt: new Date().toISOString(),
       lastCalculationDate: project.lastCalculationDate,
-      totalCarbonKg: this.round(streamCarbonKg + equipmentCarbonKg),
+      totalCarbonKg: this.round(streamCarbonKg + equipmentCarbonKg + transportCarbonKg),
       streamCarbonKg,
       equipmentCarbonKg,
+      transportCarbonKg,
       streamCount: streams.length,
       equipmentCount: equipment.length,
       emissionSourceCount: emissionSources.length,
@@ -87,6 +89,14 @@ export class ReportService {
         XLSX.utils.json_to_sheet(this.streamRows(report)),
         'Streams',
       );
+      const transportRows = this.transportRows(report);
+      if (transportRows.length > 0) {
+        XLSX.utils.book_append_sheet(
+          workbook,
+          XLSX.utils.json_to_sheet(transportRows),
+          'Transportation',
+        );
+      }
     }
 
     if (sections.includes('equipment')) {
@@ -153,6 +163,7 @@ export class ReportService {
         body: [
           ['Stream Emissions (kg)', this.formatNumber(report.summary.streamCarbonKg)],
           ['Equipment Emissions (kg)', this.formatNumber(report.summary.equipmentCarbonKg)],
+          ['Transport Emissions (kg)', this.formatNumber(report.summary.transportCarbonKg)],
           ['Total Emissions (kg)', this.formatNumber(report.summary.totalCarbonKg)],
           ['Streams', String(report.summary.streamCount)],
           ['Equipment', String(report.summary.equipmentCount)],
@@ -170,19 +181,69 @@ export class ReportService {
       y = this.addSectionTitle(doc, 'Stream Summary', y);
       autoTable(doc, {
         startY: y,
-        head: [['Stream', 'Phase', 'Category', 'Flow', 'CO₂e (kg)', 'Components']],
-        body: report.streams.map((stream) => [
-          stream.name,
-          stream.phase,
-          stream.category,
-          `${this.formatNumber(stream.flowRate)} ${stream.unit}`,
-          this.formatNumber(stream.carbonFootprintKg),
-          String(stream.components.length),
-        ]),
+        head: [
+          [
+            'Stream',
+            'Phase',
+            'Category',
+            'Flow',
+            'Material (kg)',
+            'Transport (kg)',
+            'Total (kg)',
+          ],
+        ],
+        body: report.streams.map((stream) => {
+          const transportKg = this.liveTransportKg(stream);
+          return [
+            stream.name,
+            stream.phase,
+            stream.category,
+            `${this.formatNumber(stream.flowRate)} ${stream.unit}`,
+            this.formatNumber(stream.carbonFootprintKg),
+            this.formatNumber(transportKg),
+            this.formatNumber(stream.carbonFootprintKg + transportKg),
+          ];
+        }),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [46, 125, 50] },
       });
       y = this.tableEndY(doc) + 18;
+
+      const enabledTransportStreams = report.streams.filter(
+        (stream) => stream.transport?.enabled,
+      );
+      if (enabledTransportStreams.length > 0) {
+        y = this.addSectionTitle(doc, 'Transportation Detail', y);
+        autoTable(doc, {
+          startY: y,
+          head: [
+            ['Stream', 'Mode', 'Distance', 'Unit', 'Factor', 'Transport CO₂e (kg)'],
+          ],
+          body: enabledTransportStreams.map((stream) => {
+            const transport = stream.transport!;
+            const factor = transport.emissionFactorId
+              ? report.emissionFactors.find((item) => item.id === transport.emissionFactorId)
+              : undefined;
+            return [
+              stream.name,
+              transport.inputMode === 'manual' ? 'Manual' : 'Factor',
+              transport.inputMode === 'factor'
+                ? this.formatNumber(transport.activityAmount)
+                : '—',
+              transport.inputMode === 'factor'
+                ? transport.activityUnit || factor?.unit || '—'
+                : '—',
+              transport.inputMode === 'factor'
+                ? (factor?.material ?? '—')
+                : 'Manual',
+              this.formatNumber(this.liveTransportKg(stream)),
+            ];
+          }),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [46, 125, 50] },
+        });
+        y = this.tableEndY(doc) + 18;
+      }
     }
 
     if (sections.includes('equipment')) {
@@ -229,12 +290,13 @@ export class ReportService {
       y = this.addSectionTitle(doc, 'Calculation History', y);
       autoTable(doc, {
         startY: y,
-        head: [['Version', 'Date', 'Streams (kg)', 'Equipment (kg)', 'Total (kg)']],
+        head: [['Version', 'Date', 'Streams (kg)', 'Equipment (kg)', 'Transport (kg)', 'Total (kg)']],
         body: report.calculations.map((calc) => [
           calc.version,
           calc.calculationDate,
           this.formatNumber(calc.streamCarbonKg),
           this.formatNumber(calc.equipmentCarbonKg),
+          this.formatNumber(calc.transportCarbonKg ?? 0),
           this.formatNumber(calc.totalCarbonKg),
         ]),
         styles: { fontSize: 8 },
@@ -257,6 +319,7 @@ export class ReportService {
       ['Total CO₂e (kg)', report.summary.totalCarbonKg],
       ['Stream Emissions (kg)', report.summary.streamCarbonKg],
       ['Equipment Emissions (kg)', report.summary.equipmentCarbonKg],
+      ['Transport Emissions (kg)', report.summary.transportCarbonKg],
       ['Total Streams', report.summary.streamCount],
       ['Total Equipment', report.summary.equipmentCount],
       ['Emission Sources', report.summary.emissionSourceCount],
@@ -265,18 +328,75 @@ export class ReportService {
   }
 
   private streamRows(report: ReportBundle): Array<Record<string, string | number>> {
-    return report.streams.map((stream) => ({
-      'Stream ID': stream.streamId,
-      Name: stream.name,
-      Phase: stream.phase,
-      Category: stream.category,
-      'Temperature (C)': stream.temperatureC ?? '',
-      'Pressure (atm)': stream.pressureAtm ?? '',
-      'Flow Rate': stream.flowRate,
-      Unit: stream.unit,
-      Components: stream.components.length,
-      'CO2e (kg)': stream.carbonFootprintKg,
-    }));
+    return report.streams.map((stream) => {
+      const transportKg = this.liveTransportKg(stream);
+      return {
+        'Stream ID': stream.streamId,
+        Name: stream.name,
+        Phase: stream.phase,
+        Category: stream.category,
+        'Temperature (C)': stream.temperatureC ?? '',
+        'Pressure (atm)': stream.pressureAtm ?? '',
+        'Flow Rate': stream.flowRate,
+        Unit: stream.unit,
+        Components: stream.components.length,
+        'Material CO2e (kg)': stream.carbonFootprintKg,
+        'Transport Enabled': stream.transport?.enabled ? 'Yes' : 'No',
+        'Transport Mode': stream.transport?.enabled
+          ? stream.transport.inputMode === 'manual'
+            ? 'Manual'
+            : 'Factor'
+          : '',
+        'Transport Distance':
+          stream.transport?.enabled && stream.transport.inputMode === 'factor'
+            ? stream.transport.activityAmount
+            : '',
+        'Transport Unit':
+          stream.transport?.enabled && stream.transport.inputMode === 'factor'
+            ? stream.transport.activityUnit
+            : '',
+        'Transport CO2e (kg)': transportKg,
+        'Total Stream CO2e (kg)': this.round(stream.carbonFootprintKg + transportKg),
+      };
+    });
+  }
+
+  private transportRows(report: ReportBundle): Array<Record<string, string | number>> {
+    return report.streams
+      .filter((stream) => stream.transport?.enabled)
+      .map((stream) => {
+        const transport = stream.transport!;
+        const factor = transport.emissionFactorId
+          ? report.emissionFactors.find((item) => item.id === transport.emissionFactorId)
+          : undefined;
+        const transportKg = this.liveTransportKg(stream);
+
+        return {
+          'Stream ID': stream.streamId,
+          'Stream Name': stream.name,
+          Enabled: 'Yes',
+          'Input Mode': transport.inputMode === 'manual' ? 'Manual' : 'Factor',
+          'Emission Factor': factor?.material ?? '',
+          'Factor Source': factor
+            ? (report.emissionSources.find((source) => source.id === factor.sourceId)?.name ??
+              factor.sourceId)
+            : '',
+          'Factor Value (kgCO2e/unit)': factor?.carbonFactor ?? '',
+          Distance: transport.inputMode === 'factor' ? transport.activityAmount : '',
+          Unit:
+            transport.inputMode === 'factor'
+              ? transport.activityUnit || factor?.unit || ''
+              : '',
+          'Manual CO2e (kg)':
+            transport.inputMode === 'manual' ? (transport.manualCarbonFootprintKg ?? 0) : '',
+          'Transport CO2e (kg)': transportKg,
+          Notes: transport.notes ?? '',
+        };
+      });
+  }
+
+  private liveTransportKg(stream: ReportBundle['streams'][number]): number {
+    return this.round(this.projectStore.resolveTransportCarbonKg(stream.transport));
   }
 
   private equipmentRows(report: ReportBundle): Array<Record<string, string | number>> {
@@ -322,6 +442,7 @@ export class ReportService {
       Date: calc.calculationDate,
       'Stream CO2e (kg)': calc.streamCarbonKg,
       'Equipment CO2e (kg)': calc.equipmentCarbonKg,
+      'Transport CO2e (kg)': calc.transportCarbonKg ?? 0,
       'Total CO2e (kg)': calc.totalCarbonKg,
     }));
   }

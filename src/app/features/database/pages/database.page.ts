@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   ReactiveFormsModule,
@@ -37,9 +38,13 @@ export class DatabasePage {
   readonly sourceQuery = signal('');
   readonly factorQuery = signal('');
   readonly sourceFilterId = signal<string>('all');
+  readonly categoryFilter = signal<string>('all');
   readonly editorMode = signal<EditorMode>('closed');
   readonly editingSourceId = signal<string | null>(null);
   readonly editingFactorId = signal<string | null>(null);
+  readonly factorCategory = signal<string>('Material');
+
+  readonly factorCategories = ['Material', 'Energy', 'Transport'] as const;
 
   readonly sourceForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -59,6 +64,20 @@ export class DatabasePage {
     description: [''],
   });
 
+  constructor() {
+    this.factorForm.controls.category.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((category) => {
+        this.factorCategory.set(category);
+        if (category === 'Transport' && this.editorMode() === 'create-factor') {
+          const unit = this.factorForm.controls.unit.value;
+          if (!unit || unit === 'kg' || unit === 'kWh') {
+            this.factorForm.controls.unit.setValue('km');
+          }
+        }
+      });
+  }
+
   readonly filteredSources = computed(() => {
     const query = this.sourceQuery().trim().toLowerCase();
     return this.sources().filter((source) => {
@@ -75,8 +94,12 @@ export class DatabasePage {
   readonly filteredFactors = computed(() => {
     const query = this.factorQuery().trim().toLowerCase();
     const sourceId = this.sourceFilterId();
+    const category = this.categoryFilter();
     return this.factors().filter((factor) => {
       if (sourceId !== 'all' && factor.sourceId !== sourceId) {
+        return false;
+      }
+      if (category !== 'all' && factor.category.toLowerCase() !== category.toLowerCase()) {
         return false;
       }
       if (!query) {
@@ -119,18 +142,24 @@ export class DatabasePage {
     this.editorMode.set('edit-source');
   }
 
-  openCreateFactor(): void {
+  openCreateFactor(category: 'Material' | 'Energy' | 'Transport' = 'Material'): void {
     const defaultSourceId = this.sources()[0]?.id ?? '';
     this.editingFactorId.set(null);
     this.factorForm.reset({
       sourceId: defaultSourceId,
-      category: 'Material',
+      category,
       material: '',
-      unit: 'kg',
+      unit: category === 'Transport' ? 'km' : category === 'Energy' ? 'kWh' : 'kg',
       carbonFactor: 0,
       description: '',
     });
+    this.factorCategory.set(category);
     this.editorMode.set('create-factor');
+  }
+
+  openCreateTransportFactor(): void {
+    this.categoryFilter.set('Transport');
+    this.openCreateFactor('Transport');
   }
 
   openEditFactor(factor: EmissionFactor): void {
@@ -143,6 +172,7 @@ export class DatabasePage {
       carbonFactor: factor.carbonFactor,
       description: factor.description,
     });
+    this.factorCategory.set(factor.category);
     this.editorMode.set('edit-factor');
   }
 
@@ -180,18 +210,36 @@ export class DatabasePage {
     }
 
     try {
-      const value = this.factorForm.getRawValue();
+      const raw = this.factorForm.getRawValue();
+      const value = {
+        ...raw,
+        category: this.normalizeCategory(raw.category),
+        material: raw.material.trim(),
+        unit: raw.unit.trim(),
+      };
       if (this.editorMode() === 'edit-factor' && this.editingFactorId()) {
         this.emissionDb.updateFactor(this.editingFactorId()!, value);
         toast.success('Emission factor updated');
       } else {
         this.emissionDb.addFactor(value);
-        toast.success('Emission factor added');
+        toast.success(
+          value.category === 'Transport'
+            ? 'Transport emission factor added'
+            : 'Emission factor added',
+        );
       }
       this.closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save factor');
     }
+  }
+
+  private normalizeCategory(category: string): string {
+    const trimmed = category.trim();
+    const match = this.factorCategories.find(
+      (item) => item.toLowerCase() === trimmed.toLowerCase(),
+    );
+    return match ?? trimmed;
   }
 
   deleteSource(source: EmissionSource): void {

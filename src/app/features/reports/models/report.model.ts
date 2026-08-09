@@ -15,6 +15,7 @@ export interface ReportSummary {
   totalCarbonKg: number;
   streamCarbonKg: number;
   equipmentCarbonKg: number;
+  transportCarbonKg: number;
   streamCount: number;
   equipmentCount: number;
   emissionSourceCount: number;

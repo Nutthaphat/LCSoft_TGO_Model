@@ -27,6 +27,7 @@ export class Shell {
     { label: 'Projects', path: '/projects', icon: 'folder' },
     { label: 'Streams', path: '/streams', icon: 'water_drop' },
     { label: 'Equipment', path: '/equipment', icon: 'build' },
+    { label: 'Transportation', path: '/transportation', icon: 'local_shipping' },
     { label: 'Emission Database', path: '/database', icon: 'database' },
     { label: 'Calculation', path: '/calculation', icon: 'calculate' },
     { label: 'Diagram', path: '/diagram', icon: 'account_tree' },

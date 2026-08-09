@@ -6,6 +6,12 @@
 /out-tsc
 /bazel-out
 
+# Accidental tsc emit next to Angular sources (keep electron/*.js tracked)
+/src/**/*.js
+/src/**/*.js.map
+/src/**/*.d.ts
+*.tsbuildinfo
+
 # Release / Build output
 /release
 /release/

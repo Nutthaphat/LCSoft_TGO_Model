@@ -16,8 +16,12 @@ describe('ReportService', () => {
 
     expect(report.summary.projectName.length).toBeGreaterThan(0);
     expect(report.summary.totalCarbonKg).toBe(
-      Math.round((report.summary.streamCarbonKg + report.summary.equipmentCarbonKg) * 1000) /
-        1000,
+      Math.round(
+        (report.summary.streamCarbonKg +
+          report.summary.equipmentCarbonKg +
+          report.summary.transportCarbonKg) *
+          1000,
+      ) / 1000,
     );
     expect(report.summary.streamCount).toBe(report.streams.length);
     expect(report.summary.equipmentCount).toBe(report.equipment.length);
@@ -39,5 +43,14 @@ describe('ReportService', () => {
         report.equipment[i].carbonFootprintKg,
       );
     }
+  });
+
+  it('includes transport emissions in summary totals', () => {
+    const report = service.buildReport();
+    expect(report.summary.transportCarbonKg).toBeTypeOf('number');
+    expect(report.summary.transportCarbonKg).toBeGreaterThanOrEqual(0);
+    expect(report.summary.totalCarbonKg).toBeGreaterThanOrEqual(
+      report.summary.streamCarbonKg + report.summary.equipmentCarbonKg,
+    );
   });
 });

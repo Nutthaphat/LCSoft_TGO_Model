@@ -5,6 +5,11 @@ export type DiagramNodeKind = 'stream' | 'equipment';
 
 export interface DiagramNodeData {
   kind: DiagramNodeKind;
+  /** Process (material/energy) CO₂e used for primary display. */
+  processCarbonKg: number;
+  /** Transportation CO₂e for streams; 0 for equipment. */
+  transportCarbonKg: number;
+  /** Combined CO₂e used for coloring / filters (process + transport). */
   carbonFootprintKg: number;
   color: string;
   isHighCarbon: boolean;

@@ -52,6 +52,15 @@ describe('CalculationEngineService', () => {
       carbonFactor: 0.02,
       description: '',
     },
+    {
+      id: 'ef-truck',
+      sourceId: 'src-defra',
+      category: 'Transport',
+      material: 'Truck Freight',
+      unit: 't·km',
+      carbonFactor: 0.105,
+      description: '',
+    },
   ];
 
   it('calculates stream carbon as flow × emission factor', () => {
@@ -251,5 +260,77 @@ describe('CalculationEngineService', () => {
 
     expect(summary.updatedStreams[0].components[0].emissionFactorId).toBe('ef-glucose-new');
     expect(summary.streamCarbonKg).toBe(8.5);
+  });
+
+  it('calculates transport carbon from activity × factor and includes it in total', () => {
+    const streams: ProcessStream[] = [
+      {
+        id: 's1',
+        projectId: 'p1',
+        streamId: '1',
+        name: 'Feed',
+        phase: 'Liquid',
+        temperatureC: 25,
+        pressureAtm: 1,
+        flowRate: 0,
+        unit: 'kg/hr',
+        category: 'Feed',
+        emissionSourceId: null,
+        carbonFootprintKg: 0,
+        components: [],
+        transport: {
+          enabled: true,
+          inputMode: 'factor',
+          emissionFactorId: 'ef-truck',
+          activityAmount: 100,
+          activityUnit: 't·km',
+          manualCarbonFootprintKg: null,
+          carbonFootprintKg: 0,
+          notes: '',
+        },
+      },
+    ];
+
+    const summary = engine.calculate({ streams, equipment: [], emissionFactors: factors });
+
+    expect(summary.transportCarbonKg).toBe(10.5);
+    expect(summary.totalCarbonKg).toBe(10.5);
+    expect(summary.updatedStreams[0].transport?.carbonFootprintKg).toBe(10.5);
+  });
+
+  it('uses manual transport carbon when input mode is manual', () => {
+    const streams: ProcessStream[] = [
+      {
+        id: 's1',
+        projectId: 'p1',
+        streamId: '1',
+        name: 'Feed',
+        phase: 'Liquid',
+        temperatureC: null,
+        pressureAtm: null,
+        flowRate: 0,
+        unit: 'kg/hr',
+        category: 'Feed',
+        emissionSourceId: null,
+        carbonFootprintKg: 0,
+        components: [],
+        transport: {
+          enabled: true,
+          inputMode: 'manual',
+          emissionFactorId: null,
+          activityAmount: 0,
+          activityUnit: 't·km',
+          manualCarbonFootprintKg: 42.5,
+          carbonFootprintKg: 0,
+          notes: '',
+        },
+      },
+    ];
+
+    const summary = engine.calculate({ streams, equipment: [], emissionFactors: factors });
+
+    expect(summary.transportCarbonKg).toBe(42.5);
+    expect(summary.transport[0].inputMode).toBe('manual');
+    expect(summary.totalCarbonKg).toBe(42.5);
   });
 });

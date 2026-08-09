@@ -3,10 +3,29 @@
     <div>
       <h1 class="page__title">Process Flow Diagram</h1>
       <p class="page__subtitle">
-        Project: {{ project().name }}
+        Project: {{ project().name }} · Includes stream transportation CO₂e
       </p>
     </div>
   </header>
+
+  <div class="kpi-row">
+    <article class="kpi">
+      <div class="kpi__label">Total CO₂e</div>
+      <div class="kpi__value">{{ totalCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Stream (material)</div>
+      <div class="kpi__value">{{ streamCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Equipment</div>
+      <div class="kpi__value">{{ equipmentCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi__label">Transportation</div>
+      <div class="kpi__value">{{ transportCarbonKg() | number: '1.0-1' }} <span>kg</span></div>
+    </article>
+  </div>
 
   <div class="diagram-toolbar">
     <label class="field">
@@ -57,9 +76,11 @@
     </label>
 
     <div class="legend">
-      <span><i class="swatch swatch--low"></i> Low (&lt;33%)</span>
-      <span><i class="swatch swatch--mid"></i> Medium (33–66%)</span>
-      <span><i class="swatch swatch--high"></i> High (≥66%)</span>
+      <span><i class="swatch swatch--process"></i> Process</span>
+      <span><i class="swatch swatch--transport"></i> Transport</span>
+      <span><i class="swatch swatch--low"></i> Low</span>
+      <span><i class="swatch swatch--mid"></i> Medium</span>
+      <span><i class="swatch swatch--high"></i> High</span>
     </div>
   </div>
 
@@ -88,7 +109,7 @@
           (chartClick)="onChartClick($event)"
         ></div>
         @if (!selectedNode()) {
-          <p class="chart-hint">Click a bar to inspect that node.</p>
+          <p class="chart-hint">Click a bar to inspect that node. Blue stack = transportation.</p>
         }
       }
     </div>
@@ -112,7 +133,29 @@
               <div><dt>Flow</dt><dd>{{ stream.flowRate | number: '1.0-1' }} {{ stream.unit }}</dd></div>
               <div><dt>Temp</dt><dd>{{ stream.temperatureC ?? '—' }} °C</dd></div>
               <div><dt>Pressure</dt><dd>{{ stream.pressureAtm ?? '—' }} atm</dd></div>
-              <div><dt>CO₂e</dt><dd>{{ stream.carbonFootprintKg | number: '1.0-1' }} kg</dd></div>
+              <div>
+                <dt>Material CO₂e</dt>
+                <dd>{{ node.data.processCarbonKg | number: '1.0-1' }} kg</dd>
+              </div>
+              <div>
+                <dt>Transport CO₂e</dt>
+                <dd>{{ node.data.transportCarbonKg | number: '1.0-1' }} kg</dd>
+              </div>
+              <div>
+                <dt>Total CO₂e</dt>
+                <dd>{{ node.data.carbonFootprintKg | number: '1.0-1' }} kg</dd>
+              </div>
+              @if (stream.transport?.enabled) {
+                <div>
+                  <dt>Transport mode</dt>
+                  <dd>
+                    {{ stream.transport.inputMode === 'manual' ? 'Manual' : 'Factor' }}
+                    @if (transportLabel(node)) {
+                      · {{ transportLabel(node) }}
+                    }
+                  </dd>
+                </div>
+              }
               <div><dt>Components</dt><dd>{{ stream.components.length }}</dd></div>
             </dl>
             @if (stream.components.length) {
@@ -167,6 +210,9 @@
                 </span>
                 <span class="node-list__cf">
                   {{ node.data.carbonFootprintKg | number: '1.0-0' }}
+                  @if (node.data.transportCarbonKg > 0) {
+                    <small class="transport-tag">+T</small>
+                  }
                 </span>
               </button>
             </li>

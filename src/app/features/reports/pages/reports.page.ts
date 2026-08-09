@@ -36,6 +36,8 @@ export class ReportsPage {
     this.projectStore.selectedEquipmentIds();
     this.projectStore.streams();
     this.projectStore.equipment();
+    this.projectStore.emissionFactors();
+    this.projectStore.calculations();
     return this.reportService.buildReport();
   });
 

@@ -23,6 +23,13 @@ export const routes: Routes = [
           import('./features/streams/pages/streams.page').then((m) => m.StreamsPage),
       },
       {
+        path: 'transportation',
+        loadComponent: () =>
+          import('./features/transportation/pages/transportation.page').then(
+            (m) => m.TransportationPage,
+          ),
+      },
+      {
         path: 'equipment',
         loadComponent: () =>
           import('./features/equipment/pages/equipment.page').then((m) => m.EquipmentPage),

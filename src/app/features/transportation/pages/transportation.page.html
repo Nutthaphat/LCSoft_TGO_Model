@@ -1,0 +1,173 @@
+<section class="page">
+  <header class="page__header transport-header">
+    <div>
+      <h1 class="page__title">Transportation</h1>
+      <p class="page__subtitle">
+        Choose a transport emission factor from the Emission Database, then enter the
+        distance for each stream. {{ enabledCount() }} enabled ·
+        {{ totalTransportKg() | number: '1.0-1' }} kg CO₂e configured.
+      </p>
+    </div>
+    <a class="btn btn--ghost" routerLink="/database">
+      <span class="material-symbols-outlined">database</span>
+      Manage Transport Factors
+    </a>
+  </header>
+
+  <div class="transport-layout">
+    <article class="panel streams-list">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Stream ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Mode</th>
+            <th>Transport CO₂e (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stream of streams(); track stream.id) {
+            <tr
+              class="stream-row"
+              [class.stream-row--selected]="selectedStreamId() === stream.id"
+              (click)="selectStream(stream)"
+            >
+              <td>{{ stream.streamId }}</td>
+              <td>{{ stream.name }}</td>
+              <td>{{ stream.category }}</td>
+              <td>
+                <span
+                  class="badge"
+                  [class.badge--on]="stream.transport?.enabled"
+                >
+                  {{ transportStatus(stream) }}
+                </span>
+              </td>
+              <td>
+                {{ streamTransportKg(stream) | number: '1.0-1' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">No streams loaded. Import streams first.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <aside class="panel editor-panel">
+      <div class="panel__header">
+        <h2>Transport Settings</h2>
+        @if (selectedStream()) {
+          <button type="button" class="link-btn" (click)="clearSelection()">Clear</button>
+        }
+      </div>
+
+      @if (selectedStream(); as stream) {
+        <p class="muted">
+          Editing <strong>{{ stream.name }}</strong> (ID {{ stream.streamId }})
+        </p>
+
+        <form class="form" [formGroup]="form" (ngSubmit)="save()">
+          <label class="check-field">
+            <input type="checkbox" formControlName="enabled" />
+            <span>Enable transportation CF for this stream</span>
+          </label>
+
+          <label class="field">
+            <span>Input mode</span>
+            <select formControlName="inputMode">
+              <option value="factor">From Emission Database</option>
+              <option value="manual">Manual (kg CO₂e)</option>
+            </select>
+          </label>
+
+          @if (inputMode() === 'factor') {
+            <label class="field">
+              <span>Transport factor (from Emission Database)</span>
+              <select formControlName="emissionFactorId">
+                <option value="">Select from database…</option>
+                @for (factor of transportFactors(); track factor.id) {
+                  <option [value]="factor.id">
+                    {{ factorOptionLabel(factor) }}
+                  </option>
+                }
+              </select>
+            </label>
+
+            @if (transportFactors().length === 0) {
+              <p class="hint">
+                No Transport factors yet.
+                <a routerLink="/database">Add Transport factors</a>
+                in Emission Database (category = Transport).
+              </p>
+            }
+
+            @if (selectedFactor(); as factor) {
+              <dl class="factor-meta">
+                <div>
+                  <dt>Mode</dt>
+                  <dd>{{ factor.material }}</dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>{{ sourceName(factor.sourceId) }}</dd>
+                </div>
+                <div>
+                  <dt>EF</dt>
+                  <dd>{{ factor.carbonFactor | number: '1.0-4' }} kg / {{ factor.unit }}</dd>
+                </div>
+              </dl>
+            }
+
+            <label class="field">
+              <span>Distance ({{ selectedFactorUnit() }})</span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                formControlName="activityAmount"
+                placeholder="Enter distance"
+              />
+            </label>
+            <p class="hint">
+              CO₂e = Distance × selected factor. Unit follows the factor
+              ({{ selectedFactorUnit() }}).
+            </p>
+          } @else {
+            <label class="field">
+              <span>Manual CO₂e (kg)</span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                formControlName="manualCarbonFootprintKg"
+              />
+            </label>
+          }
+
+          <label class="field">
+            <span>Notes</span>
+            <textarea rows="2" formControlName="notes"></textarea>
+          </label>
+
+          <div class="preview">
+            <span>Preview CO₂e</span>
+            <strong>{{ previewCarbonKg() | number: '1.0-2' }} kg</strong>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Save</button>
+            <button type="button" class="btn btn--ghost" (click)="clearTransport()">
+              Remove
+            </button>
+          </div>
+        </form>
+      } @else {
+        <p class="muted">Select a stream to configure transportation carbon footprint.</p>
+      }
+    </aside>
+  </div>
+</section>

@@ -4,6 +4,7 @@ import {
   Equipment,
   ProcessStream,
   StreamComponent,
+  StreamTransport,
 } from '../../../models/domain.model';
 import {
   CalculationInput,
@@ -14,6 +15,7 @@ import {
   KW_TO_KWH_PER_HOUR,
   MMKCAL_TO_MJ,
   StreamCalculationDetail,
+  TransportCalculationDetail,
 } from '../models/calculation.model';
 
 const ENERGY_MATERIAL_MAP = {
@@ -31,10 +33,13 @@ export class CalculationEngineService {
     );
 
     const streamDetails: StreamCalculationDetail[] = [];
+    const transportDetails: TransportCalculationDetail[] = [];
     const updatedStreams: ProcessStream[] = [];
     let streamCarbonKg = 0;
+    let transportCarbonKg = 0;
     let missingFactorCount = 0;
     const warnings: string[] = [];
+    const factorById = new Map(input.emissionFactors.map((factor) => [factor.id, factor]));
 
     for (const stream of input.streams) {
       const detail = this.calculateStream(stream, factorIndex);
@@ -43,10 +48,25 @@ export class CalculationEngineService {
       missingFactorCount += detail.components.filter((c) => !c.matched && c.flowRate > 0).length;
       warnings.push(...detail.warnings);
 
+      const transportDetail = this.calculateTransport(stream, factorById);
+      transportDetails.push(transportDetail);
+      transportCarbonKg += transportDetail.carbonFootprintKg;
+      if (
+        transportDetail.enabled &&
+        transportDetail.inputMode === 'factor' &&
+        !transportDetail.emissionFactorId
+      ) {
+        missingFactorCount += 1;
+      }
+      warnings.push(...transportDetail.warnings);
+
+      const nextTransport = this.applyTransportResult(stream.transport, transportDetail);
+
       updatedStreams.push({
         ...stream,
         carbonFootprintKg: detail.carbonFootprintKg,
         emissionSourceId: this.resolveStreamSourceId(detail, input.emissionFactors, stream),
+        transport: nextTransport,
         components: detail.components.map((component) => ({
           componentName: component.componentName,
           flowRate: component.flowRate,
@@ -78,12 +98,14 @@ export class CalculationEngineService {
     return {
       streamCarbonKg: this.round(streamCarbonKg),
       equipmentCarbonKg: this.round(equipmentCarbonKg),
-      totalCarbonKg: this.round(streamCarbonKg + equipmentCarbonKg),
+      transportCarbonKg: this.round(transportCarbonKg),
+      totalCarbonKg: this.round(streamCarbonKg + equipmentCarbonKg + transportCarbonKg),
       calculatedStreamCount: updatedStreams.length,
       calculatedEquipmentCount: updatedEquipment.length,
       missingFactorCount,
       warnings: [...new Set(warnings)],
       streams: streamDetails,
+      transport: transportDetails,
       equipment: equipmentDetails,
       updatedStreams,
       updatedEquipment,
@@ -114,6 +136,93 @@ export class CalculationEngineService {
   calculateDutyCarbon(dutyMMkcalPerHr: number, carbonFactorPerMj: number): number {
     const mj = Math.abs(dutyMMkcalPerHr) * MMKCAL_TO_MJ;
     return this.round(mj * carbonFactorPerMj);
+  }
+
+  private calculateTransport(
+    stream: ProcessStream,
+    factorById: Map<string, EmissionFactor>,
+  ): TransportCalculationDetail {
+    const transport = stream.transport;
+    if (!transport?.enabled) {
+      return {
+        streamId: stream.streamId,
+        streamName: stream.name,
+        enabled: false,
+        inputMode: transport?.inputMode ?? null,
+        emissionFactorId: transport?.emissionFactorId ?? null,
+        emissionFactorLabel: null,
+        activityAmount: transport?.activityAmount ?? 0,
+        activityUnit: transport?.activityUnit ?? 't·km',
+        carbonFootprintKg: 0,
+        warnings: [],
+      };
+    }
+
+    if (transport.inputMode === 'manual') {
+      const carbonFootprintKg = this.round(transport.manualCarbonFootprintKg ?? 0);
+      return {
+        streamId: stream.streamId,
+        streamName: stream.name,
+        enabled: true,
+        inputMode: 'manual',
+        emissionFactorId: null,
+        emissionFactorLabel: null,
+        activityAmount: transport.activityAmount,
+        activityUnit: transport.activityUnit,
+        carbonFootprintKg,
+        warnings: [],
+      };
+    }
+
+    const factor = transport.emissionFactorId
+      ? factorById.get(transport.emissionFactorId)
+      : undefined;
+
+    if (!factor) {
+      return {
+        streamId: stream.streamId,
+        streamName: stream.name,
+        enabled: true,
+        inputMode: 'factor',
+        emissionFactorId: null,
+        emissionFactorLabel: null,
+        activityAmount: transport.activityAmount,
+        activityUnit: transport.activityUnit,
+        carbonFootprintKg: 0,
+        warnings: [
+          `${stream.name}: No transport emission factor selected or factor missing from database`,
+        ],
+      };
+    }
+
+    return {
+      streamId: stream.streamId,
+      streamName: stream.name,
+      enabled: true,
+      inputMode: 'factor',
+      emissionFactorId: factor.id,
+      emissionFactorLabel: factor.material,
+      activityAmount: transport.activityAmount,
+      activityUnit: transport.activityUnit || factor.unit,
+      carbonFootprintKg: this.round(transport.activityAmount * factor.carbonFactor),
+      warnings: [],
+    };
+  }
+
+  private applyTransportResult(
+    current: StreamTransport | null | undefined,
+    detail: TransportCalculationDetail,
+  ): StreamTransport | null {
+    if (!current) {
+      return null;
+    }
+
+    return {
+      ...current,
+      carbonFootprintKg: detail.carbonFootprintKg,
+      emissionFactorId:
+        detail.inputMode === 'factor' ? detail.emissionFactorId : current.emissionFactorId,
+    };
   }
 
   private calculateStream(

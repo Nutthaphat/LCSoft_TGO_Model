@@ -87,15 +87,27 @@
         </label>
         <label class="field">
           <span>Category</span>
-          <input type="text" formControlName="category" placeholder="Material / Energy" />
+          <select formControlName="category">
+            @for (category of factorCategories; track category) {
+              <option [value]="category">{{ category }}</option>
+            }
+          </select>
         </label>
         <label class="field">
-          <span>Material</span>
-          <input type="text" formControlName="material" />
+          <span>{{ factorCategory() === 'Transport' ? 'Transport mode' : 'Material' }}</span>
+          <input
+            type="text"
+            formControlName="material"
+            [placeholder]="factorCategory() === 'Transport' ? 'e.g. Truck, Rail, Ship' : ''"
+          />
         </label>
         <label class="field">
           <span>Unit</span>
-          <input type="text" formControlName="unit" />
+          <input
+            type="text"
+            formControlName="unit"
+            [placeholder]="factorCategory() === 'Transport' ? 'km or t·km' : 'kg / kWh / MJ'"
+          />
         </label>
         <label class="field">
           <span>Carbon Factor (kgCO₂e/unit)</span>
@@ -103,7 +115,15 @@
         </label>
         <label class="field field--full">
           <span>Description</span>
-          <input type="text" formControlName="description" />
+          <input
+            type="text"
+            formControlName="description"
+            [placeholder]="
+              factorCategory() === 'Transport'
+                ? 'Optional note for this transport emission factor'
+                : ''
+            "
+          />
         </label>
         <div class="form__actions field--full">
           <button type="button" class="btn btn--ghost" (click)="closeEditor()">Cancel</button>
@@ -179,18 +199,29 @@
     <article class="panel">
       <div class="panel__header">
         <h2>Emission Factors</h2>
-        <button
-          type="button"
-          class="btn btn--primary btn--small"
-          [disabled]="sources().length === 0"
-          (click)="openCreateFactor()"
-        >
-          <span class="material-symbols-outlined">add</span>
-          Add
-        </button>
+        <div class="panel__header-actions">
+          <button
+            type="button"
+            class="btn btn--ghost btn--small"
+            [disabled]="sources().length === 0"
+            (click)="openCreateTransportFactor()"
+          >
+            <span class="material-symbols-outlined">local_shipping</span>
+            Add Transport
+          </button>
+          <button
+            type="button"
+            class="btn btn--primary btn--small"
+            [disabled]="sources().length === 0"
+            (click)="openCreateFactor()"
+          >
+            <span class="material-symbols-outlined">add</span>
+            Add
+          </button>
+        </div>
       </div>
 
-      <div class="toolbar toolbar--split">
+      <div class="toolbar toolbar--triple">
         <input
           type="search"
           placeholder="Search factors…"
@@ -206,12 +237,21 @@
             <option [value]="source.id">{{ source.name }}</option>
           }
         </select>
+        <select
+          [value]="categoryFilter()"
+          (change)="categoryFilter.set($any($event.target).value)"
+        >
+          <option value="all">All categories</option>
+          @for (category of factorCategories; track category) {
+            <option [value]="category">{{ category }}</option>
+          }
+        </select>
       </div>
 
       <table class="table">
         <thead>
           <tr>
-            <th>Material</th>
+            <th>Name / Mode</th>
             <th>Source</th>
             <th>Category</th>
             <th>Unit</th>

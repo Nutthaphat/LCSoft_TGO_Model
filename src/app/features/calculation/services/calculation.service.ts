@@ -64,6 +64,7 @@ export class CalculationService {
       totalCarbonKg: summary.totalCarbonKg,
       streamCarbonKg: summary.streamCarbonKg,
       equipmentCarbonKg: summary.equipmentCarbonKg,
+      transportCarbonKg: summary.transportCarbonKg,
       version: nextVersion,
     };
 

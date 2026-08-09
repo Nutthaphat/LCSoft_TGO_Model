@@ -24,32 +24,49 @@ export class DiagramService {
     equipment: Equipment[],
     filters: DiagramFilters = DEFAULT_DIAGRAM_FILTERS,
     selectedId: string | null = null,
+    transportKgByStreamId: ReadonlyMap<string, number> = new Map(),
   ): DiagramGraph {
+    const streamTotals = streams.map((stream) => {
+      const processCarbonKg = stream.carbonFootprintKg;
+      const transportCarbonKg = transportKgByStreamId.get(stream.id) ?? 0;
+      return {
+        stream,
+        processCarbonKg,
+        transportCarbonKg,
+        totalCarbonKg: processCarbonKg + transportCarbonKg,
+      };
+    });
+
     const maxCarbon = Math.max(
       1,
-      ...streams.map((item) => item.carbonFootprintKg),
+      ...streamTotals.map((item) => item.totalCarbonKg),
       ...equipment.map((item) => item.carbonFootprintKg),
     );
 
     const highThreshold = maxCarbon * 0.6;
     const query = filters.search.trim().toLowerCase();
 
-    const streamNodes: DiagramNode[] = streams.map((stream) => {
+    const streamNodes: DiagramNode[] = streamTotals.map((item) => {
+      const { stream, processCarbonKg, transportCarbonKg, totalCarbonKg } = item;
       const label = stream.name;
       const isMatch = !query || this.matchesQuery(query, label, stream.phase, stream.category);
+      const transportNote =
+        transportCarbonKg > 0 ? ` · Transport ${Math.round(transportCarbonKg)} kg` : '';
       return {
         id: stream.id,
         label,
         dimension: { width: 160, height: 64 },
         data: {
           kind: 'stream' as const,
-          carbonFootprintKg: stream.carbonFootprintKg,
-          color: this.carbonColor(stream.carbonFootprintKg, maxCarbon),
-          isHighCarbon: stream.carbonFootprintKg >= highThreshold,
+          processCarbonKg,
+          transportCarbonKg,
+          carbonFootprintKg: totalCarbonKg,
+          color: this.carbonColor(totalCarbonKg, maxCarbon),
+          isHighCarbon: totalCarbonKg >= highThreshold,
           isMatch,
           isSelected: selectedId === stream.id,
           stream,
-          subtitle: `${stream.phase} · ${stream.category}`,
+          subtitle: `${stream.phase} · ${stream.category}${transportNote}`,
         },
       };
     });
@@ -63,6 +80,8 @@ export class DiagramService {
         dimension: { width: 170, height: 72 },
         data: {
           kind: 'equipment' as const,
+          processCarbonKg: item.carbonFootprintKg,
+          transportCarbonKg: 0,
           carbonFootprintKg: item.carbonFootprintKg,
           color: this.carbonColor(item.carbonFootprintKg, maxCarbon),
           isHighCarbon: item.carbonFootprintKg >= highThreshold,
@@ -94,7 +113,7 @@ export class DiagramService {
     });
 
     const visibleIds = new Set(visibleNodes.map((node) => node.id));
-    const links = this.buildLinks(streams, equipment, maxCarbon).filter(
+    const links = this.buildLinks(streams, equipment, maxCarbon, transportKgByStreamId).filter(
       (link) => visibleIds.has(link.source) && visibleIds.has(link.target),
     );
 
@@ -105,6 +124,7 @@ export class DiagramService {
     streams: ProcessStream[],
     equipment: Equipment[],
     maxCarbon: number,
+    transportKgByStreamId: ReadonlyMap<string, number>,
   ): DiagramEdge[] {
     const links: DiagramEdge[] = [];
     const sortedEquipment = [...equipment].sort(
@@ -142,13 +162,14 @@ export class DiagramService {
       if (!firstEquipment) {
         break;
       }
+      const carbon = stream.carbonFootprintKg + (transportKgByStreamId.get(stream.id) ?? 0);
       links.push({
         id: `feed-${stream.id}-${firstEquipment.id}`,
         source: stream.id,
         target: firstEquipment.id,
         data: {
-          carbonFootprintKg: stream.carbonFootprintKg,
-          color: this.carbonColor(stream.carbonFootprintKg, maxCarbon),
+          carbonFootprintKg: carbon,
+          color: this.carbonColor(carbon, maxCarbon),
         },
       });
     }
@@ -157,13 +178,14 @@ export class DiagramService {
       if (!lastEquipment) {
         break;
       }
+      const carbon = stream.carbonFootprintKg + (transportKgByStreamId.get(stream.id) ?? 0);
       links.push({
         id: `prod-${lastEquipment.id}-${stream.id}`,
         source: lastEquipment.id,
         target: stream.id,
         data: {
-          carbonFootprintKg: stream.carbonFootprintKg,
-          color: this.carbonColor(stream.carbonFootprintKg, maxCarbon),
+          carbonFootprintKg: carbon,
+          color: this.carbonColor(carbon, maxCarbon),
         },
       });
     }
@@ -174,13 +196,14 @@ export class DiagramService {
       }
       const target =
         sortedEquipment[index % Math.max(sortedEquipment.length, 1)] ?? midEquipment;
+      const carbon = stream.carbonFootprintKg + (transportKgByStreamId.get(stream.id) ?? 0);
       links.push({
         id: `proc-${stream.id}-${target.id}`,
         source: stream.id,
         target: target.id,
         data: {
-          carbonFootprintKg: stream.carbonFootprintKg,
-          color: this.carbonColor(stream.carbonFootprintKg, maxCarbon),
+          carbonFootprintKg: carbon,
+          color: this.carbonColor(carbon, maxCarbon),
         },
       });
     });
@@ -188,13 +211,15 @@ export class DiagramService {
     // Fallback: if no equipment, connect streams in list order.
     if (sortedEquipment.length === 0) {
       for (let i = 0; i < streams.length - 1; i++) {
+        const carbon =
+          streams[i].carbonFootprintKg + (transportKgByStreamId.get(streams[i].id) ?? 0);
         links.push({
           id: `stream-${streams[i].id}-${streams[i + 1].id}`,
           source: streams[i].id,
           target: streams[i + 1].id,
           data: {
-            carbonFootprintKg: streams[i].carbonFootprintKg,
-            color: this.carbonColor(streams[i].carbonFootprintKg, maxCarbon),
+            carbonFootprintKg: carbon,
+            color: this.carbonColor(carbon, maxCarbon),
           },
         });
       }

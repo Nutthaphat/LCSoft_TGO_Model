@@ -19,6 +19,19 @@ export interface StreamCalculationDetail {
   warnings: string[];
 }
 
+export interface TransportCalculationDetail {
+  streamId: string;
+  streamName: string;
+  enabled: boolean;
+  inputMode: 'factor' | 'manual' | null;
+  emissionFactorId: string | null;
+  emissionFactorLabel: string | null;
+  activityAmount: number;
+  activityUnit: string;
+  carbonFootprintKg: number;
+  warnings: string[];
+}
+
 export interface EquipmentEnergyLine {
   energyType: 'Electricity' | 'Heating' | 'Cooling';
   quantity: number;
@@ -44,12 +57,14 @@ export interface EquipmentCalculationDetail {
 export interface CalculationSummary {
   streamCarbonKg: number;
   equipmentCarbonKg: number;
+  transportCarbonKg: number;
   totalCarbonKg: number;
   calculatedStreamCount: number;
   calculatedEquipmentCount: number;
   missingFactorCount: number;
   warnings: string[];
   streams: StreamCalculationDetail[];
+  transport: TransportCalculationDetail[];
   equipment: EquipmentCalculationDetail[];
   updatedStreams: ProcessStream[];
   updatedEquipment: Equipment[];

@@ -34,7 +34,18 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-const PIE_COLORS = ['#2E7D32', '#1976D2', '#F9A825', '#C62828', '#6A1B9A', '#00838F'];
+const PIE_COLORS = [
+  '#2E7D32',
+  '#1976D2',
+  '#F9A825',
+  '#C62828',
+  '#6A1B9A',
+  '#00838F',
+  '#EF6C00',
+];
+
+const TRANSPORT_COLOR = '#1565C0';
+const PROCESS_COLOR = '#2E7D32';
 
 @Component({
   selector: 'app-diagram-page',
@@ -49,8 +60,21 @@ export class DiagramPage {
   private readonly diagramService = inject(DiagramService);
 
   readonly project = this.projectStore.project;
+  readonly streamCarbonKg = this.projectStore.streamCarbonKg;
+  readonly equipmentCarbonKg = this.projectStore.equipmentCarbonKg;
+  readonly transportCarbonKg = this.projectStore.transportCarbonKg;
+  readonly totalCarbonKg = this.projectStore.totalCarbonKg;
+
   readonly filters = signal<DiagramFilters>({ ...DEFAULT_DIAGRAM_FILTERS });
   readonly selectedId = signal<string | null>(null);
+
+  readonly transportKgByStreamId = computed(() => {
+    const map = new Map<string, number>();
+    for (const stream of this.projectStore.streams()) {
+      map.set(stream.id, this.projectStore.resolveTransportCarbonKg(stream.transport));
+    }
+    return map;
+  });
 
   readonly graph = computed(() => {
     const selectedStreamIds = this.projectStore.selectedStreamIds();
@@ -67,6 +91,7 @@ export class DiagramPage {
       equipment,
       this.filters(),
       this.selectedId(),
+      this.transportKgByStreamId(),
     );
   });
 
@@ -83,10 +108,10 @@ export class DiagramPage {
   readonly chartTitle = computed(() => {
     const node = this.selectedNode();
     if (!node) {
-      return 'Carbon by node (kg CO₂e)';
+      return 'Carbon by node (process + transport)';
     }
     if (node.data.kind === 'stream') {
-      return `${node.label} — component CO₂e`;
+      return `${node.label} — material & transport CO₂e`;
     }
     return `${node.label} — CO₂e`;
   });
@@ -98,9 +123,10 @@ export class DiagramPage {
     }
     if (node.data.kind === 'stream') {
       const comps = node.data.stream?.components ?? [];
-      const hasData = comps.some((c) => c.carbonFootprintKg > 0);
-      if (!comps.length || !hasData) {
-        return 'No component CO₂e data for this stream.';
+      const hasComponentData = comps.some((c) => c.carbonFootprintKg > 0);
+      const hasTransport = node.data.transportCarbonKg > 0;
+      if (!hasComponentData && !hasTransport) {
+        return 'No material or transport CO₂e data for this stream.';
       }
     }
     return null;
@@ -151,6 +177,20 @@ export class DiagramPage {
     this.selectedId.set(node.id);
   }
 
+  transportLabel(node: DiagramNode): string {
+    if (node.data.kind !== 'stream' || node.data.transportCarbonKg <= 0) {
+      return '';
+    }
+    const transport = node.data.stream?.transport;
+    if (!transport?.enabled) {
+      return '';
+    }
+    if (transport.inputMode === 'manual') {
+      return 'Manual';
+    }
+    return `${transport.activityAmount} ${transport.activityUnit}`;
+  }
+
   onChartClick(event: ECElementEvent): void {
     if (this.selectedNode()) {
       return;
@@ -178,15 +218,31 @@ export class DiagramPage {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         formatter: (params: unknown) => {
-          const items = Array.isArray(params) ? params : [params];
-          const first = items[0] as { name?: string; value?: number } | undefined;
-          if (!first) {
+          const items = (Array.isArray(params) ? params : [params]) as Array<{
+            seriesName?: string;
+            name?: string;
+            value?: number;
+            marker?: string;
+          }>;
+          if (!items.length) {
             return '';
           }
-          return `${first.name}<br/>${Number(first.value ?? 0).toLocaleString()} kg CO₂e`;
+          const name = items[0].name ?? '';
+          const lines = items
+            .filter((item) => Number(item.value ?? 0) > 0)
+            .map(
+              (item) =>
+                `${item.marker ?? ''}${item.seriesName}: ${Number(item.value ?? 0).toLocaleString()} kg`,
+            );
+          const total = items.reduce((sum, item) => sum + Number(item.value ?? 0), 0);
+          return `${name}<br/>${lines.join('<br/>')}<br/><b>Total: ${total.toLocaleString()} kg</b>`;
         },
       },
-      grid: { left: 140, right: 32, top: 24, bottom: 32 },
+      legend: {
+        data: ['Process', 'Transport'],
+        top: 0,
+      },
+      grid: { left: 140, right: 32, top: 40, bottom: 32 },
       xAxis: {
         type: 'value',
         name: 'kg CO₂e',
@@ -199,10 +255,26 @@ export class DiagramPage {
       },
       series: [
         {
+          name: 'Process',
           type: 'bar',
+          stack: 'total',
           data: nodes.map((node) => ({
-            value: Math.round(node.data.carbonFootprintKg),
-            itemStyle: { color: node.data.color, borderRadius: [0, 8, 8, 0] },
+            value: Math.round(node.data.processCarbonKg),
+            itemStyle: {
+              color: node.data.kind === 'equipment' ? node.data.color : PROCESS_COLOR,
+              borderRadius: node.data.transportCarbonKg > 0 ? 0 : [0, 8, 8, 0],
+            },
+          })),
+          barMaxWidth: 28,
+          cursor: 'pointer',
+        },
+        {
+          name: 'Transport',
+          type: 'bar',
+          stack: 'total',
+          data: nodes.map((node) => ({
+            value: Math.round(node.data.transportCarbonKg),
+            itemStyle: { color: TRANSPORT_COLOR, borderRadius: [0, 8, 8, 0] },
           })),
           barMaxWidth: 28,
           cursor: 'pointer',
@@ -215,6 +287,18 @@ export class DiagramPage {
     const components = (node.data.stream?.components ?? []).filter(
       (c) => c.carbonFootprintKg > 0,
     );
+    const data = components.map((c) => ({
+      name: c.componentName,
+      value: Math.round(c.carbonFootprintKg * 10) / 10,
+    }));
+
+    if (node.data.transportCarbonKg > 0) {
+      data.push({
+        name: 'Transportation',
+        value: Math.round(node.data.transportCarbonKg * 10) / 10,
+      });
+    }
+
     return {
       tooltip: { trigger: 'item', formatter: '{b}: {c} kg ({d}%)' },
       legend: { bottom: 0, type: 'scroll' },
@@ -226,10 +310,7 @@ export class DiagramPage {
           center: ['50%', '46%'],
           avoidLabelOverlap: true,
           label: { formatter: '{b}\n{d}%' },
-          data: components.map((c) => ({
-            name: c.componentName,
-            value: Math.round(c.carbonFootprintKg * 10) / 10,
-          })),
+          data,
         },
       ],
     };

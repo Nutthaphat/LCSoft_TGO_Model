@@ -107,4 +107,27 @@ describe('DiagramService', () => {
     expect(graph.nodes).toHaveLength(1);
     expect(graph.nodes[0].label).toBe('R1');
   });
+
+  it('includes transport carbon on stream nodes', () => {
+    const transportByStream = new Map<string, number>([['str-1', 25]]);
+    const graph = service.buildGraph(
+      streams,
+      equipment,
+      {
+        search: '',
+        showStreams: true,
+        showEquipment: true,
+        highCarbonOnly: false,
+        minCarbonKg: 0,
+      },
+      null,
+      transportByStream,
+    );
+
+    const feed = graph.nodes.find((node) => node.id === 'str-1');
+    expect(feed?.data.processCarbonKg).toBe(100);
+    expect(feed?.data.transportCarbonKg).toBe(25);
+    expect(feed?.data.carbonFootprintKg).toBe(125);
+    expect(feed?.data.subtitle).toContain('Transport');
+  });
 });

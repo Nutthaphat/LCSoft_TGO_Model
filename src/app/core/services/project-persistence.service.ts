@@ -132,6 +132,13 @@ export class ProjectPersistenceService {
       (sum, item) => sum + item.carbonFootprintKg,
       0,
     );
+    const transportCarbon = workspace.streams.reduce((sum, stream) => {
+      const transport = stream.transport;
+      if (!transport?.enabled) {
+        return sum;
+      }
+      return sum + (transport.carbonFootprintKg || 0);
+    }, 0);
 
     return {
       id: workspace.project.id,
@@ -142,7 +149,8 @@ export class ProjectPersistenceService {
       updatedAt: workspace.updatedAt,
       streamCount: workspace.streams.length,
       equipmentCount: workspace.equipment.length,
-      totalCarbonKg: Math.round((streamCarbon + equipmentCarbon) * 1000) / 1000,
+      totalCarbonKg:
+        Math.round((streamCarbon + equipmentCarbon + transportCarbon) * 1000) / 1000,
     };
   }
 

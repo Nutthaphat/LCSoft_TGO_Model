@@ -20,6 +20,7 @@ export class DashboardService {
 
     const streamCarbonKg = this.projectStore.streamCarbonKg();
     const equipmentCarbonKg = this.projectStore.equipmentCarbonKg();
+    const transportCarbonKg = this.projectStore.transportCarbonKg();
     const totalCarbonKg = this.projectStore.totalCarbonKg();
 
     const topStreams = [...streams].sort(
@@ -82,6 +83,7 @@ export class DashboardService {
       totalEmissionSources: sources.length,
       totalStreamEmissionsKg: streamCarbonKg,
       totalEquipmentEmissionsKg: equipmentCarbonKg,
+      totalTransportEmissionsKg: transportCarbonKg,
       highestCarbonStream: topStreams[0]?.name ?? null,
       highestCarbonEquipment: topEquipment[0]?.name ?? null,
       averageCarbonPerStream: streams.length ? streamCarbonKg / streams.length : 0,
@@ -98,8 +100,7 @@ export class DashboardService {
       carbonByCategory: [
         { category: 'Streams', carbonKg: streamCarbonKg },
         { category: 'Equipment', carbonKg: equipmentCarbonKg },
-        { category: 'Utilities', carbonKg: equipmentCarbonKg * 0.35 },
-        { category: 'Other Sources', carbonKg: streamCarbonKg * 0.08 },
+        { category: 'Transportation', carbonKg: transportCarbonKg },
       ],
       emissionSourceUsage,
       carbonTrend: [...calculations]

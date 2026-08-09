@@ -51,6 +51,19 @@ export interface StreamComponent {
   carbonFootprintKg: number;
 }
 
+export type TransportInputMode = 'factor' | 'manual';
+
+export interface StreamTransport {
+  enabled: boolean;
+  inputMode: TransportInputMode;
+  emissionFactorId: string | null;
+  activityAmount: number;
+  activityUnit: string;
+  manualCarbonFootprintKg: number | null;
+  carbonFootprintKg: number;
+  notes: string;
+}
+
 export interface ProcessStream {
   id: string;
   projectId: string;
@@ -65,6 +78,8 @@ export interface ProcessStream {
   components: StreamComponent[];
   emissionSourceId: string | null;
   carbonFootprintKg: number;
+  /** Per-stream transportation CF config; null/undefined = none. */
+  transport?: StreamTransport | null;
 }
 
 export interface Equipment {
@@ -128,6 +143,7 @@ export interface CalculationResult {
   totalCarbonKg: number;
   streamCarbonKg: number;
   equipmentCarbonKg: number;
+  transportCarbonKg: number;
   version: string;
 }
 
@@ -157,6 +173,7 @@ export interface DashboardKpis {
   totalEmissionSources: number;
   totalStreamEmissionsKg: number;
   totalEquipmentEmissionsKg: number;
+  totalTransportEmissionsKg: number;
   highestCarbonStream: string | null;
   highestCarbonEquipment: string | null;
   averageCarbonPerStream: number;
